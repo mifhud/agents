@@ -1,0 +1,51 @@
+{
+  "LOG": false,
+  "LOG_LEVEL": "debug",
+  "CLAUDE_PATH": "",
+  "HOST": "127.0.0.1",
+  "PORT": 3456,
+  "APIKEY": "sk-123456",
+  "API_TIMEOUT_MS": "600000",
+  "PROXY_URL": "",
+  "transformers": [],
+  "Providers": [
+    {
+      "name": "local-openrouter",
+      "api_base_url": "http://192.168.100.192:5000/api/v1/chat/completions",
+      "api_key": "dummy-key",
+      "models": [
+        "deepseek/deepseek-chat-v3.1:free",
+        "z-ai/glm-4.5-air:free",
+        "deepseek/deepseek-r1-0528:free",
+        "moonshotai/kimi-k2:free",
+        "qwen/qwen3-coder:free",
+        "deepseek/deepseek-chat-v3-0324:free"
+      ],
+      "transformer": {
+        "use": [
+          "openrouter"
+        ]
+      }
+    }
+  ],
+  "StatusLine": {
+    "enabled": false,
+    "currentStyle": "default",
+    "default": {
+      "modules": []
+    },
+    "powerline": {
+      "modules": []
+    }
+  },
+  "Router": {
+    "default": "local-openrouter,z-ai/glm-4.5-air:free",
+    "background": "local-openrouter,z-ai/glm-4.5-air:free",
+    "think": "local-openrouter,deepseek/deepseek-r1-0528:free",
+    "longContext": "local-openrouter,deepseek/deepseek-r1-0528:free",
+    "longContextThreshold": 60000,
+    "webSearch": "local-openrouter,deepseek/deepseek-r1-0528:free",
+    "image": "local-openrouter,z-ai/glm-4.5-air:free"
+  },
+  "CUSTOM_ROUTER_PATH": ""
+}

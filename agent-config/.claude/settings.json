@@ -1,0 +1,52 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(git checkout:*)"
+    ],
+    "deny": [
+      "Bash(git rm:*)"
+    ]
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -Command \"New-BurntToastNotification -Text \"$1\"\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -Command \"(New-Object Media.SoundPlayer 'D:\\02 Areas\\04 Coding Tools\\claude_completed.wav').PlaySync()\""
+          },
+          {
+            "type": "command",
+            "command": "powershell.exe -Command \"New-BurntToastNotification -Text 'Claude Code', 'Completed'\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": []
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "mgrep@Mixedbread-Grep": true
+  }
+}
