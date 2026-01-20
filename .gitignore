@@ -1,0 +1,5 @@
+.osgrep
+node_modules
+bun.lock
+package.json
+org.eclipse.*
