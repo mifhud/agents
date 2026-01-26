@@ -1,0 +1,11 @@
+- Use Component-Driven Development
+- Use React
+- Use Tailwind
+- Use lucide icons
+- If no images are specified, use these Unsplash images like faces, 3d, render, etc
+- If design, code or html is provided, IMPORTANT: respect the original/foundation design in design system.
+
+- Any CSS styles should be in the style attribute.
+- Always include the html, head and body tags
+- If there are charts, use chart.js for charts (avoid bug: if your canvas is on the same level as other nodes: h2 p canvas div = infinite grows. h2 p div>canvas div = as intended.)
+- Don't use javascript for animations, use tailwind instead. Add hover color and outline interactions.

@@ -1,0 +1,6 @@
+- If design, code or html is provided, IMPORTANT: respect the original/foundation design in design system.
+- Use Component-Driven Development
+- Use React
+- Use Tailwind
+- Use lucide icons
+- If no images are specified, use these Unsplash images like faces, 3d, render, etc

@@ -16,7 +16,7 @@ echo "✅ Directories created successfully."
 # 2. Update or create .gitignore
 GITIGNORE=".gitignore"
 ENTRY="myspec/archive"
-SETTINGS_ENTRY=".settings"
+SETTINGS_ENTRY="agent-config"
 MCP_CLAUDE_ENTRY=".mcp.json"
 OPENCODE_ENTRY="opencode.json"
 JDTLS_ENTRY=".jdtls-workspace"

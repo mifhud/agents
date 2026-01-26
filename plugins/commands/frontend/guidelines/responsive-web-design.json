@@ -1,0 +1,154 @@
+{
+  "title": "Responsive Web Design: Screen Size Reference Guide",
+  "description": "A comprehensive reference for screen sizes and breakpoints used in modern responsive web design.",
+  "lastUpdated": "2026-01",
+  "screenSizes": {
+    "largeDisplays": [
+      {
+        "name": "4K (Ultra HD)",
+        "width": 3840,
+        "height": 2160
+      },
+      {
+        "name": "2K (QHD)",
+        "width": 2560,
+        "height": 1440
+      },
+      {
+        "name": "Full HD",
+        "width": 1920,
+        "height": 1080
+      }
+    ],
+    "desktop": [
+      {
+        "name": "Large Desktop",
+        "minWidth": 1440,
+        "maxWidth": null
+      },
+      {
+        "name": "Standard Desktop",
+        "minWidth": 1024,
+        "maxWidth": 1440
+      }
+    ],
+    "tablets": [
+      {
+        "name": "Tablet Landscape",
+        "minWidth": 1024,
+        "maxWidth": 1280
+      },
+      {
+        "name": "Tablet Portrait",
+        "minWidth": 768,
+        "maxWidth": 1024
+      }
+    ],
+    "mobile": [
+      {
+        "name": "Large Phones",
+        "minWidth": 425,
+        "maxWidth": 768
+      },
+      {
+        "name": "Medium Phones",
+        "minWidth": 375,
+        "maxWidth": 425
+      },
+      {
+        "name": "Small Phones",
+        "minWidth": 320,
+        "maxWidth": 375
+      }
+    ]
+  },
+  "frameworkBreakpoints": {
+    "description": "Standard breakpoints used by popular frameworks like Bootstrap and Tailwind CSS.",
+    "breakpoints": [
+      {
+        "name": "Extra Small",
+        "abbreviation": "xs",
+        "minWidth": 0,
+        "maxWidth": 575
+      },
+      {
+        "name": "Small",
+        "abbreviation": "sm",
+        "minWidth": 576,
+        "maxWidth": 767
+      },
+      {
+        "name": "Medium",
+        "abbreviation": "md",
+        "minWidth": 768,
+        "maxWidth": 991
+      },
+      {
+        "name": "Large",
+        "abbreviation": "lg",
+        "minWidth": 992,
+        "maxWidth": 1199
+      },
+      {
+        "name": "Extra Large",
+        "abbreviation": "xl",
+        "minWidth": 1200,
+        "maxWidth": 1399
+      },
+      {
+        "name": "Extra Extra Large",
+        "abbreviation": "xxl",
+        "minWidth": 1400,
+        "maxWidth": null
+      }
+    ]
+  },
+  "bestPractices": [
+    {
+      "title": "Focus on Key Breakpoints",
+      "description": "Most designs focus on 3-5 key breakpoints rather than targeting every possible screen size. Prioritize the devices most relevant to your audience."
+    },
+    {
+      "title": "Mobile-First Design",
+      "description": "Start with styles for small screens and progressively add complexity using min-width media queries. This approach ensures a solid baseline experience for all users."
+    },
+    {
+      "title": "Handling 4K Displays",
+      "description": "For ultra-wide and 4K displays, cap content width at around 1400-1600px to maintain readability."
+    },
+    {
+      "title": "Minimum Width Testing",
+      "description": "Always test your designs at 320px width to ensure compatibility with the smallest phones still in active use."
+    }
+  ],
+  "mediaQueryExamples": {
+    "approach": "mobile-first",
+    "queries": [
+      {
+        "name": "Small devices",
+        "description": "Phones, 576px and up",
+        "query": "@media (min-width: 576px)"
+      },
+      {
+        "name": "Medium devices",
+        "description": "Tablets, 768px and up",
+        "query": "@media (min-width: 768px)"
+      },
+      {
+        "name": "Large devices",
+        "description": "Desktops, 992px and up",
+        "query": "@media (min-width: 992px)"
+      },
+      {
+        "name": "Extra large devices",
+        "description": "Large desktops, 1200px and up",
+        "query": "@media (min-width: 1200px)"
+      },
+      {
+        "name": "Extra extra large devices",
+        "description": "1400px and up",
+        "query": "@media (min-width: 1400px)"
+      }
+    ]
+  }
+}

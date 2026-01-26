@@ -1,0 +1,10 @@
+- Only code in HTML/Tailwind in a single code block.
+- Any CSS styles should be in the style attribute.
+- Always include the html, head and body tags.
+- Use lucide icons
+- If there are charts, use chart.js for charts (avoid bug: if your canvas is on the same level as other nodes: h2 p canvas div = infinite grows. h2 p div>canvas div = as intended.).
+- Don't put tailwind classes in the html tag, put them in the body tags.
+- If no images are specified, use these Unsplash images like faces, 3d, render, etc.
+- Be creative with fonts, layouts, be extremely detailed and make it functional.
+- If design, code or html is provided, IMPORTANT: respect the original design in design system.
+- Don't use javascript for animations, use tailwind instead. Add hover color and outline interactions.
