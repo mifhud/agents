@@ -9,7 +9,6 @@ Important Rules:
 Saya akan memberikan dokumen UAT untuk diverifikasi. Tugas Anda:
 
 1. ANALISIS JENIS TEST dari UAT yang diberikan:
-   - HTTP/REST API requests
    - Queue/Topic messaging (ActiveMQ, RabbitMQ, Kafka, dll)
    - Scheduler/Cron tasks
 

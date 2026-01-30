@@ -1,16 +1,9 @@
-@.github/commands/uat-runner.prompt.md
+@uat/debugger
 
 Important:
-- only use select queries on mcp for mysql-dev-apps_config, mysql-dev-token
-- only use selet and insert queries on mysql-dev-broadcast (FIRST CHECK IF DATA TO BE INSERTED ALREADY EXISTS)
+- only use select queries on mcp database
 - don't delete/modify any existing(besides test data requirements) data on the database
-- create uat test file
+- don't clean up test data in databases or message broker after uat run
 
-Run only these UAT
-@spec/debug/uat/personalschedulertrigger.md
-
-- don't remove files test
-- don't clean up test data in databases after uat run
-
-## Clean Up
-remove file test and remove only successfully inserted/updated data
+Run only UAT:
+$ARGUMENTS

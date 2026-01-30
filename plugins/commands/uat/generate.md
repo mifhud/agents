@@ -1,4 +1,3 @@
-Use agent @uat/generate
 First read and include the logic inside any function calls and their inner code in below. Make sure all function calls, classes, etc. 
 are read recursively until there are no more nested calls that need to be included.
 $ARGUMENTS

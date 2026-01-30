@@ -25,9 +25,13 @@
 #### TC-001: {Test Case Description}
 
 ##### Test Data Requirements (if applicable)
-e.g., mock data DML databases, external system mocks
+###### e.g., mock data DML databases, external system mocks's request(include method type, path, headers, body request) and response
+Description
 
-##### Example Payloads (if applicable)
+###### e.g., mock data DML databases, external system mocks's request(include method type, path, headers, body request) and response
+...
+
+##### Example Payloads (if applicable exclude external system payloads only in this section)
 - HTTP API endpoints only recevied by the application
 - Message-broker queues/topics (e.g., Kafka, RabbitMQ) only consumed by the application
 
