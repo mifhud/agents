@@ -3,6 +3,7 @@
 ## Objective
 
 First studying and reading the logic of all function calls and their nested inner code until there are no remaining unread nested function calls.
+$ARGUMENTS
 
 Then:
 Convert code into a plain-language flowchart description that explains WHAT the system does (not HOW). Output saves to: `$(pwd)/myspec/debug/codeflow-non-programmers/{feature_name}.md`
