@@ -168,6 +168,30 @@
         }
     },
     "mcp": {
+        "activemq": {
+            "type": "local",
+            "command": [
+                "node", 
+                "/root/01-projects/me/activemq-mcp/dist/index.js"
+            ],
+            "environment": {
+                "ACTIVEMQ_HOST": "localhost",
+                "ACTIVEMQ_PORT": "61613",
+                "ACTIVEMQ_USERNAME": "admin",
+                "ACTIVEMQ_PASSWORD": "admin"
+            }
+        },
+        "firecrawl": {
+            "type": "local",
+            "command": [
+                "npx",
+                "-y",
+                "firecrawl-mcp"
+            ],
+            "environment": {
+                "FIRECRAWL_API_KEY": "fc-425c51abc5a7426c8e95201aa3301cc5"
+            }
+        },
         "code-mode": {
             "type": "local",
             "command": [
@@ -304,6 +328,23 @@
                 "MYSQL_PORT": "3306",
                 "MYSQL_USER": "root",
                 "MYSQL_PASSWORD": "jatis123",
+                "MYSQL_DATABASE": "apps_config"
+            },
+            "enabled": true
+        },
+        "mysql-dev-apps-config": {
+            "type": "local",
+            "command": [
+                "uvx",
+                "--from",
+                "mysql-mcp-server",
+                "mysql_mcp_server"
+            ],
+            "environment": {
+                "MYSQL_HOST": "43.133.129.138",
+                "MYSQL_PORT": "3306",
+                "MYSQL_USER": "root",
+                "MYSQL_PASSWORD": "Jatis123$$$",
                 "MYSQL_DATABASE": "apps_config"
             },
             "enabled": true
