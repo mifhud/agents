@@ -1,0 +1,1 @@
+Build the binary/jar/anything else about binary app file and copy it to the bin folder. If there are any config updates, adjust the project structure as follows. I usually work from the dev folder or from its parent directory, where the project root contains both the bin and dev folders.
