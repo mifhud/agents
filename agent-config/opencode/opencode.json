@@ -168,10 +168,19 @@
         }
     },
     "mcp": {
+        "chrome-devtools": {
+            "type": "local",
+            "command": [
+                "npx",
+                "-y",
+                "chrome-devtools-mcp@latest"
+            ],
+            "enabled": true
+        },
         "activemq": {
             "type": "local",
             "command": [
-                "node", 
+                "node",
                 "/root/01-projects/me/activemq-mcp/dist/index.js"
             ],
             "environment": {
@@ -472,6 +481,18 @@
                 "<path-to-your-sqlite-database.db>"
             ],
             "enabled": true
+        },
+        "brave": {
+            "type": "local",
+            "command": [ 
+                "npx",
+                "-y",
+                "brave-search-mcp"
+            ],
+            "environment": {
+                "BRAVE_API_KEY": "BSA_K_k-ApzPbgbPXXWF6EpbZO_NP1r"
+            },
+            "enabled": false
         },
         "permission": {
             "bash": "allow",
