@@ -137,3 +137,14 @@ Read template: [templates/changelog.md](templates/changelog.md)
 4. Keep descriptions simple but with enough detail for non-programmers
 5. Only one spesific version to be generated at a time (e.g. `1.2.0.md`)
 6. Save to `wikis/changelog/{version}.md`
+
+---
+
+## Type: Flowchart
+
+Read template: [templates/flowchart.md](templates/flowchart.md)
+
+### Process
+1. Use this for **visualizing flows** in feature documentation
+2. Generate Mermaid flowchart in `wikis/feature/{feature-name}-flowchart.md`
+3. Follow the template structure for shape definitions and connections

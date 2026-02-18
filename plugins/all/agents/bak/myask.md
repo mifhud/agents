@@ -1,1 +1,0 @@
-Read the plan file, then use question tool / AskUserQuestionTool to interview me in depth on prompt-related aspects
