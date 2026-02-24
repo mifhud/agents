@@ -1,7 +1,6 @@
 ---
 name: myspec-plan
 description: Save planning and feature specifications to organized markdown files under myspec/plan/. Triggers on myspec-plan, plan spec, planning document, feature spec, PRD.
-license: MIT
 ---
 
 ## Trigger Keywords

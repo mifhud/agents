@@ -7,7 +7,8 @@ description: >
   codeflow descriptions, UAT test cases, changelogs, release notes, or project
   readme. Supports generating all doc types at once or individually via arguments.
   Do NOT use for code review, bug fixing, or non-documentation tasks.
-allowed-tools: Read, Grep, Glob, Write, Bash
+context: fork
+agent: wiki-generator
 ---
 
 # Generate Wikis
@@ -19,6 +20,7 @@ allowed-tools: Read, Grep, Glob, Write, Bash
 /generate-wikis feature <path>               → codeflow doc for target code
 /generate-wikis uat <path>                   → UAT test cases for target code
 /generate-wikis changelog <version>          → changelog for specific version
+/generate-wikis flowchart <feature-name>    → flowchart for specific feature
 ```
 If no arguments: ask the user what to generate.
 
@@ -28,6 +30,7 @@ All output saves to `$(pwd)/myspec/debug/wikis/`:
 wikis/
 ├── home.md
 ├── feature/{feature-name}.md
+├── feature/{feature-name}-flowchart.md ← flowchart file
 ├── uat/{test-name}.md
 ├── changelog/{version}.md
 ├── feature.md                    ← index
@@ -44,12 +47,12 @@ wikis/
 
 ### Step 1: Setup
 ```bash
-mkdir -p $(pwd)/myspec/debug/wikis/{feature,uat,changelog}
+mkdir -p $(pwd)/myspec/debug/wikis/{feature,uat,changelog,flowchart}
 ```
 
 ### Step 2: Parse $ARGUMENTS
 Determine type and target from `$ARGUMENTS`.
-If "all" → run Home → Feature → UAT → Changelog in order.
+If "all" → run Home → Feature → Flowchart → UAT → Changelog in order.
 
 ### Step 3: Generate by type
 Branch to the matching section below.

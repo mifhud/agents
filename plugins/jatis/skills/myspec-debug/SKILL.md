@@ -1,7 +1,6 @@
 ---
 name: myspec-debug
 description: Save debugging documentation and troubleshooting guides to organized markdown files under myspec/debug/. Triggers on myspec-debug, debug spec, troubleshooting, bug investigation.
-license: MIT
 ---
 
 ## Trigger Keywords

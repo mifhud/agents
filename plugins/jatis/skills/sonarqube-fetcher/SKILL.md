@@ -20,6 +20,12 @@ gates, security hotspots, and source code.
 | `SONARQUBE_TOKEN`        | Yes      | —                         |
 | `SONARQUBE_ORGANIZATION` | No       | — (required for SonarCloud) |
 
+## Fetcher Methods
+- Try curl first (primary method)
+- If curl fails, fallback to MCP SonarQube (secondary method)
+- If both fail, report the error clearly
+- When using curl, save the temporary response to /tmp with a filename prefixed by PROJECT_KEY
+
 ## Tools reference
 
 For complete parameter details on all tools, see [tools-reference.md](tools-reference.md).
