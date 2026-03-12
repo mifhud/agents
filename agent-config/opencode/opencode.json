@@ -172,8 +172,17 @@
             "type": "local",
             "command": [
                 "npx",
-                "-y",
-                "chrome-devtools-mcp@latest"
+                "chrome-devtools-mcp@latest",
+                "--browser-url=http://172.26.112.1:9222"
+            ],
+            "enabled": true
+        },
+        "chrome-devtools": {
+            "type": "local",
+            "command": [
+                "node",
+                "/usr/lib/tool-dev/chrome-devtools-mcp/build/src/index.js",
+                "--browser-url=http://172.26.112.1:9222"
             ],
             "enabled": true
         },
@@ -188,7 +197,8 @@
                 "ACTIVEMQ_PORT": "61613",
                 "ACTIVEMQ_USERNAME": "admin",
                 "ACTIVEMQ_PASSWORD": "admin"
-            }
+            },
+            "enabled": true
         },
         "firecrawl": {
             "type": "local",
@@ -199,7 +209,8 @@
             ],
             "environment": {
                 "FIRECRAWL_API_KEY": "fc-425c51abc5a7426c8e95201aa3301cc5"
-            }
+            },
+            "enabled": true
         },
         "code-mode": {
             "type": "local",
@@ -484,7 +495,7 @@
         },
         "brave": {
             "type": "local",
-            "command": [ 
+            "command": [
                 "npx",
                 "-y",
                 "brave-search-mcp"
