@@ -1,6 +1,6 @@
 ---
 name: ssh-remote-tmux
-description: "Run commands on a remote server via SSH inside a persistent tmux session. Use when the user wants to execute shell commands, manage services, inspect logs, edit files, or perform any interactive task on a remote machine. The user's natural-language prompt is translated into one or more shell commands, confirmed with the user, then executed inside a tmux pane over SSH. The tmux session persists between interactions and is only destroyed when the user explicitly asks. Output: captured tmux pane content showing full command output."
+description: "Run commands on a remote server via SSH inside a persistent tmux session. Use when the user wants to execute shell commands, manage services, inspect logs, edit files, or perform any interactive task on a remote machine. The user's natural-language prompt is translated into shell commands, then confirmed with the user via question before execution. Commands are executed inside a tmux pane over SSH. The tmux session persists between interactions and is only destroyed when the user explicitly asks. Output: captured tmux pane content showing full command output."
 ---
 
 # SSH Remote Tmux Skill
@@ -10,10 +10,12 @@ Execute commands on a remote server by translating the user's request into shell
 ## Core Workflow
 
 1. **Parse** the user's natural-language request and determine the shell command(s) needed.
-2. **Confirm** the command(s) with the user before execution.
-3. **Send** the confirmed command(s) into the remote tmux session via SSH.
+2. **ASK the user for confirmation** using the `question` tool — present the exact command(s) and let the user approve, edit, or cancel. **NEVER execute any command on the remote server without explicit user approval.**
+3. **Send** only the approved command(s) into the remote tmux session via SSH.
 4. **Capture** the full terminal output and present it to the user.
 5. **Keep** the tmux session alive — only destroy it when the user explicitly requests cleanup.
+
+> **MANDATORY CONFIRMATION RULE:** Before every command execution, you MUST use the `question` tool to present the command and ask the user to confirm. Do NOT use bash to run the SSH command until the user has approved. This applies to every single command — no exceptions.
 
 ---
 
@@ -83,7 +85,45 @@ Convert the user's natural-language prompt into concrete shell commands. Example
 | "Show the contents of /etc/hosts" | `cat /etc/hosts` |
 | "Restart the web service" | `sudo systemctl restart nginx` |
 
-**Always confirm with the user before sending.** Present the command(s) and ask for approval.
+**Always confirm with the user using the `question` tool before sending.** Example:
+
+```
+question({
+  questions: [{
+    question: "I'll run this command on the remote server:\n\n`df -h`\n\nProceed?",
+    options: ["Yes, execute", "Edit command", "Cancel"],
+    type: "single_select"
+  }]
+})
+```
+
+- If the user selects **"Yes, execute"** → proceed to send the command via SSH.
+- If the user selects **"Edit command"** → ask the user to provide the corrected command (in prose), then confirm again with `question`.
+- If the user selects **"Cancel"** → do not execute anything.
+
+For **multiple commands**, list all of them in the question so the user can review the full sequence:
+
+```
+question({
+  questions: [{
+    question: "I'll run these commands in sequence on the remote server:\n\n1. `cd /var/log`\n2. `ls -lah`\n3. `tail -50 syslog`\n\nProceed?",
+    options: ["Yes, execute all", "Edit commands", "Cancel"],
+    type: "single_select"
+  }]
+})
+```
+
+For **dangerous or destructive commands** (rm, reboot, drop, kill, systemctl stop, etc.), add an extra warning:
+
+```
+question({
+  questions: [{
+    question: "⚠️ This is a destructive command:\n\n`rm -rf /tmp/old-builds/`\n\nThis will permanently delete files. Are you sure?",
+    options: ["Yes, I understand the risk", "Edit command", "Cancel"],
+    type: "single_select"
+  }]
+})
+```
 
 ### Sending a Command
 
@@ -215,7 +255,16 @@ SSH_CMD="ssh -o StrictHostKeyChecking=no -p $SSH_PORT -i $SSH_KEY ${SSH_USER}@${
 $SSH_CMD "tmux has-session -t '$SESSION' 2>/dev/null" || \
   $SSH_CMD "tmux new-session -d -s '$SESSION' -x 220 -y 50"
 
-# --- 2. Send a command (after user confirmation) ---
+# --- 2. Determine the command from user's request ---
+COMMAND="docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
+
+# --- 3. ASK USER FOR CONFIRMATION (via question) ---
+# Use question tool:
+#   question: "I'll run this on the remote server:\n\n`docker ps --format '...'`\n\nProceed?"
+#   options: ["Yes, execute", "Edit command", "Cancel"]
+# STOP HERE — do NOT proceed to step 4 until user selects "Yes, execute"
+
+# --- 4. ONLY after user approval, send the command ---
 COMMAND="docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
 
 $SSH_CMD "tmux send-keys -t '$SESSION' -l -- $(printf '%q' "$COMMAND")"
@@ -258,7 +307,7 @@ $SSH_CMD "tmux list-sessions 2>/dev/null" || echo "No active tmux sessions."
 
 ## Important Tips
 
-- **Always confirm commands with the user** before executing. Present the exact command and wait for approval.
+- **Always confirm commands with the user using `question`** before executing. Present the exact command(s) as options and wait for the user to select "Yes, execute". Never skip this step.
 - **Never combine** command text and Enter in a single `send-keys` call — always separate them with a short sleep.
 - **Use `-l` flag** on `send-keys` for literal strings to prevent tmux from interpreting special characters.
 - **Use `printf '%q'`** to safely quote commands passed through SSH to avoid shell expansion issues.
