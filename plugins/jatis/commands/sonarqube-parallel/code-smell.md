@@ -56,11 +56,11 @@ For each severity level (BLOCKER → CRITICAL → MAJOR → MINOR → INFO):
 
 ### 2.3 Spawn Parallel Subagents
 
-Use parallel subagent sonarqube to spawn subagents:
+Spawn parallel subagents:
 
 ```
 For each batch:
-  parallel subagent "sonarqube", prompt="Fix these code smell issues: [batch details]"
+  parallel subagent "sonarqube-code-smell-fixer", prompt="Fix these code smell issues: [batch details]"
 ```
 
 **Each subagent receives:**

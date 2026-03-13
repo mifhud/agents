@@ -4,11 +4,6 @@ description: >-
   Validates code smell fixes by running builds, tests, and SonarQube analysis.
   Verifies that fixes don't introduce regressions and that SonarQube issue counts
   actually decreased. Use after applying code smell fixes to ensure quality.
-model: haiku
-permissionMode: bypassPermissions
-tools:
-  - Bash
-  - Read
 ---
 
 # SonarQube Code Smell Validator

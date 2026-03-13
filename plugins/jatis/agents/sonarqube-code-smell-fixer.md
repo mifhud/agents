@@ -1,28 +1,30 @@
 ---
 name: sonarqube-code-smell-fixer
 description: >-
-  Remediates SonarQube code smells automatically with severity-first priority.
-  Orchestrates fetching, fixing, validating, and committing in batches.
-  Use when the user provides a SonarQube URL, mentions SonarQube code smells,
-  asks to clean up code quality issues, or invokes /sonarqube-code-smell-fixer.
-model: sonnet
-permissionMode: ask
-tools:
-  - Read
-  - Edit
-  - Write
-  - Bash
-  - Task(sonarqube-fetcher)
-  - Task(sonarqube-code-smell-validator)
-skills:
-  - git-commit-workflow
+  Team lead agent for SonarQube code smell remediation. Primary entry point for
+  fixing code quality issues. Orchestrates fetching, fixing, validating, and
+  committing in batches with severity-first priority. Use when asked to fix
+  SonarQube code smells, clean up code quality issues, or invoke /sonarqube-code-smell-fixer.
 ---
 
 # SonarQube Code Smell Remediation
 
-Delegates work to specialized sub-agents: `sonarqube-fetcher` for data retrieval and
-`sonarqube-code-smell-validator` for validation. Loads the `git-commit-workflow` skill
-when committing fixes.
+> **Agent Team Architecture**
+>
+> This agent is the **team lead** for code smell remediation. It coordinates three
+> specialized agents:
+>
+> | Agent | Role | Model | Responsibility |
+> |-------|------|-------|---------------|
+> | `sonarqube-code-smell-fixer` (this agent) | Team Lead | sonnet | Orchestrates workflow, applies fixes, commits |
+> | `sonarqube-fetcher` | Fetcher | haiku | Retrieves issues/metrics from SonarQube API |
+> | `sonarqube-code-smell-validator` | Validator | haiku | Validates fixes via build/test/analysis |
+>
+> Invoke this agent directly for code smell work. Do not route through the general
+> `sonarqube` agent.
+>
+> This agent spawns the fetcher for data retrieval and the validator for validation.
+> It loads the `git-commit-workflow` skill when committing fixes.
 
 ## Core principle: severity-first
 

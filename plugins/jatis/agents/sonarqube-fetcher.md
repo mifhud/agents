@@ -5,11 +5,6 @@ description: >-
   hotspots, and quality gates. Use when asked to analyze code quality, find
   bugs, review security issues, check project health via SonarQube, or when
   another agent needs SonarQube data.
-model: haiku
-permissionMode: bypassPermissions
-tools:
-  - Bash
-  - Read
 ---
 
 # SonarQube Fetcher
