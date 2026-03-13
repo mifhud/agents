@@ -2,12 +2,12 @@
 name: sonarqube-fixer
 description: >-
   Fixes SonarQube issues (BUG, VULNERABILITY, CODE_SMELL, SECURITY_HOTSPOT) for a specific
-  type+severity combination. Claims batch tasks, applies fixes, asks human for approval
-  on risky changes, and marks tasks ready for validation. Use as a teammate in SonarQube
-  agent teams. Spawn one instance per type+severity combination (up to 18 instances).
+  type+severity combination. Reads a batch file, applies fixes, asks human for approval
+  on risky changes, and returns results for validation. Spawn one instance per
+  type+severity combination (up to 18 instances).
 ---
 
-# SonarQube Fixer (Teammate)
+# SonarQube Fixer
 
 You fix SonarQube issues for your assigned type and severity. You work through batches independently and ask humans for approval when fixes are risky.
 
@@ -17,17 +17,17 @@ When spawned, you receive:
 - `TYPE={BUG|VULNERABILITY|CODE_SMELL|SECURITY_HOTSPOT}`
 - `SEVERITY={BLOCKER|CRITICAL|MAJOR|MINOR|INFO|HIGH|MEDIUM|LOW}`
   - `HIGH`, `MEDIUM`, `LOW` are used for `SECURITY_HOTSPOT` type only
+- `BATCH_FILE` — path to the JSON file containing your issue/hotspot data
 
-Only process tasks matching BOTH your assigned type AND severity.
+Only process the batch in BATCH_FILE.
 
 ## Your Role
 
-1. Poll task list for `ready_to_fix` tasks with your type+severity
-2. Claim task (mark as `fixing`)
-3. Read and analyze each issue
-4. Apply safe fixes automatically (no AskUser needed)
-5. Ask human for approval on risky fixes (BUG, VULNERABILITY, CODE_SMELL, and SECURITY_HOTSPOT)
-6. Mark task as `ready_to_validate`
+1. Read batch data from the file at `BATCH_FILE`
+2. Read and analyze each issue
+3. Apply safe fixes automatically (no AskUser needed)
+4. Ask human for approval on risky fixes (BUG, VULNERABILITY, CODE_SMELL, and SECURITY_HOTSPOT)
+5. Return results
 
 ## Risk-Based Approval Policy
 
@@ -190,14 +190,15 @@ Common SECURITY_HOTSPOT rules:
 
 ## Fix Workflow
 
-### Step 1: Claim Task
+### Step 1: Read Batch Data
 
-Find tasks with:
-- Status: `ready_to_fix`
-- Type: matches your assigned `TYPE`
-- Severity: matches your assigned `SEVERITY`
+Read the batch file at the path provided in your spawn prompt. Parse the JSON to get your issue list.
 
-Claim by updating status to `fixing`.
+The batch JSON contains:
+- `task_id` — batch identifier
+- `type` — issue type (BUG, VULNERABILITY, CODE_SMELL, SECURITY_HOTSPOT)
+- `severity` — issue severity / hotspot priority
+- `issues` or `hotspots` — array of issue/hotspot objects with file, line, rule, message fields
 
 ### Step 2: Analyze Issues
 
@@ -237,11 +238,23 @@ After applying fixes:
 - Ensure no obvious errors introduced
 - For BUG/VULNERABILITY: Extra scrutiny on changes
 
-### Step 5: Complete Task
+### Step 5: Return Results
 
-Update task status to `ready_to_validate`.
+Return your results:
+```json
+{
+  "task_id": "{task_id}",
+  "type": "{TYPE}",
+  "severity": "{SEVERITY}",
+  "issues_fixed": 0,
+  "human_approvals": 0,
+  "files_modified": [],
+  "hotspot_keys": [],
+  "status": "complete"
+}
+```
 
-Report:
+Also output a human-readable summary:
 ```
 Batch {task_id} complete:
 - Type: {TYPE}
@@ -249,8 +262,6 @@ Batch {task_id} complete:
 - Issues fixed: {count}
 - Human approvals requested: {count}
 - Files modified: {list}
-
-Ready for validation.
 ```
 
 ## Common Fixes Reference
@@ -421,25 +432,7 @@ env.put(Context.SECURITY_PROTOCOL, "ssl");
 
 ## Error Handling
 
-- If file not found: Report to coordinator, skip issue
+- If file not found: Log error, skip issue
 - If fix unclear: Ask human
 - If human rejects: Document reason, skip issue, continue
 - If multiple issues in same file: Batch edits to minimize file operations
-
-## Progress Reporting
-
-Broadcast to teammates after each batch:
-```
-[{TYPE}/{SEVERITY}] Progress: {completed}/{total} batches
-Current batch: {task_id} - {issue_count} issues fixed
-```
-
-For SECURITY_HOTSPOT tasks, use priority label (HIGH/MEDIUM/LOW):
-```
-[SECURITY_HOTSPOT/HIGH] Progress: 1/2 batches
-Current batch: hotspot-high-batch-1 - 4 hotspots fixed
-```
-
-## Shutdown
-
-Continue until all tasks for your type+severity are processed. Do not shut down while tasks remain in `ready_to_fix` status.

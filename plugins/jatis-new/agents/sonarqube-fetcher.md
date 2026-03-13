@@ -2,13 +2,12 @@
 name: sonarqube-fetcher
 description: >-
   Fetches SonarQube issues (BUG, VULNERABILITY, CODE_SMELL, SECURITY_HOTSPOT) and/or
-  coverage data, creating batch tasks for parallel remediation. Queries SonarQube API,
+  coverage data, creating batch files for parallel remediation. Queries SonarQube API,
   groups issues by type+severity or hotspots by vulnerabilityProbability or coverage
-  files by directory, and populates the shared task list.
-  Use as a teammate in SonarQube agent teams.
+  files by directory, writes per-batch JSON files and combos.json for skill orchestration.
 ---
 
-# SonarQube Fetcher (Teammate)
+# SonarQube Fetcher
 
 You fetch SonarQube issues and create batch tasks for the team to process.
 
@@ -36,23 +35,21 @@ Based on MODE:
 **For issues mode:**
 1. Query SonarQube for issues by type and severity
 2. Group issues into type+severity batches
-3. Create task list entries with full issue details
+3. Write one JSON file per batch to `{OUTPUT_DIR}/batches/`
 4. Write combos.json file for skill orchestration
-5. Mark tasks as ready for fixers
 
 **For hotspots mode:**
 1. Query SonarQube for Security Hotspots with status `TO_REVIEW`
 2. Group hotspots by `vulnerabilityProbability` (HIGH/MEDIUM/LOW)
-3. Create hotspot task list entries with full hotspot details
+3. Write one JSON file per hotspot batch to `{OUTPUT_DIR}/batches/`
 4. Write hotspot section to combos.json
-5. Mark tasks as ready for fixers
 
 **For coverage mode:**
 1. Query SonarQube for project coverage metrics
 2. Query per-file coverage data (sorted worst-first)
 3. Filter files below target coverage
 4. Group by directory, batch 3-5 files per task
-5. Create coverage tasks in shared task list
+5. Write one JSON file per coverage batch to `{OUTPUT_DIR}/batches/`
 6. Write coverage section to combos.json
 
 **For both mode:**
@@ -161,16 +158,40 @@ Example batch structure:
   files: ["src/Main.java", "src/Utils.java"]
 ```
 
-### Step 5: Populate Task List
+### Step 5: Write Batch Files
 
-Use the team's shared task list to create entries:
-1. Create task with status `pending`
-2. Populate issue details (including `type` field)
-3. Update status to `ready_to_fix`
+After grouping, create the batches directory and write one JSON file per batch:
+
+```bash
+mkdir -p "${OUTPUT_DIR}/batches"
+```
+
+For each batch, write `${OUTPUT_DIR}/batches/{task_id}.json` with the full batch data:
+
+```json
+{
+  "task_id": "bug-blocker-batch-1",
+  "title": "[BUG/BLOCKER] Batch 1/2: 4 issues",
+  "type": "BUG",
+  "severity": "BLOCKER",
+  "issues": [
+    {
+      "key": "AY123",
+      "file": "src/Main.java",
+      "line": 42,
+      "rule": "java:S2259",
+      "message": "A NullPointerException...",
+      "type": "BUG",
+      "severity": "BLOCKER"
+    }
+  ],
+  "files": ["src/Main.java", "src/Utils.java"]
+}
+```
 
 ### Step 6: Write Combos JSON
 
-After populating all tasks, write `${OUTPUT_DIR}/combos.json`:
+After writing all batch files, write `${OUTPUT_DIR}/combos.json`:
 
 ```json
 {
@@ -181,19 +202,22 @@ After populating all tasks, write `${OUTPUT_DIR}/combos.json`:
       "type": "BUG",
       "severity": "BLOCKER",
       "issue_count": 8,
-      "batch_count": 2
+      "batch_count": 2,
+      "task_ids": ["bug-blocker-batch-1", "bug-blocker-batch-2"]
     },
     {
       "type": "VULNERABILITY",
       "severity": "CRITICAL",
       "issue_count": 5,
-      "batch_count": 1
+      "batch_count": 1,
+      "task_ids": ["vulnerability-critical-batch-1"]
     },
     {
       "type": "CODE_SMELL",
       "severity": "MAJOR",
       "issue_count": 45,
-      "batch_count": 4
+      "batch_count": 4,
+      "task_ids": ["code-smell-major-batch-1", "code-smell-major-batch-2", "code-smell-major-batch-3", "code-smell-major-batch-4"]
     }
   ],
   "total_issues": 58,
@@ -201,7 +225,7 @@ After populating all tasks, write `${OUTPUT_DIR}/combos.json`:
 }
 ```
 
-This file lets the skill spawn only the fixers needed for active type+severity combinations.
+This file lets the skill spawn fixers with the exact batch file paths for each type+severity combination.
 
 ## Hotspot Fetch Workflow
 
@@ -307,9 +331,37 @@ Example task structure:
   files: ["src/main/java/com/example/Auth.java", "src/main/java/com/example/Crypto.java"]
 ```
 
-### Step 4: Populate Task List
+### Step 4: Write Hotspot Batch Files
 
-Create task entries with status `ready_to_fix` for each batch.
+Create the batches directory and write one JSON file per hotspot batch:
+
+```bash
+mkdir -p "${OUTPUT_DIR}/batches"
+```
+
+For each batch, write `${OUTPUT_DIR}/batches/{task_id}.json`:
+
+```json
+{
+  "task_id": "hotspot-high-batch-1",
+  "title": "[SECURITY_HOTSPOT/HIGH] Batch 1/2: 4 hotspots",
+  "type": "SECURITY_HOTSPOT",
+  "severity": "HIGH",
+  "hotspots": [
+    {
+      "key": "AY123abc",
+      "file": "src/main/java/com/example/Auth.java",
+      "component": "my-project:src/main/java/com/example/Auth.java",
+      "line": 42,
+      "rule": "java:S4790",
+      "message": "Make sure that using a weak hash algorithm is safe here.",
+      "securityCategory": "weak-cryptography",
+      "vulnerabilityProbability": "HIGH"
+    }
+  ],
+  "files": ["src/main/java/com/example/Auth.java"]
+}
+```
 
 ### Step 5: Write Hotspot Section to Combos JSON
 
@@ -326,17 +378,20 @@ Extend or create `${OUTPUT_DIR}/combos.json` with a `hotspots` section:
       {
         "priority": "HIGH",
         "count": 5,
-        "batch_count": 1
+        "batch_count": 1,
+        "task_ids": ["hotspot-high-batch-1"]
       },
       {
         "priority": "MEDIUM",
         "count": 12,
-        "batch_count": 2
+        "batch_count": 2,
+        "task_ids": ["hotspot-medium-batch-1", "hotspot-medium-batch-2"]
       },
       {
         "priority": "LOW",
         "count": 8,
-        "batch_count": 1
+        "batch_count": 1,
+        "task_ids": ["hotspot-low-batch-1"]
       }
     ],
     "total_batches": 4
@@ -358,7 +413,7 @@ SECURITY_HOTSPOT:
   LOW:    8 hotspots  → 1 batch
 
 Total: 25 hotspots in 4 batches
-Task list populated and ready for hotspot fixers.
+Batch files written to: ${OUTPUT_DIR}/batches/
 Hotspot combos written to: ${OUTPUT_DIR}/combos.json
 ```
 
@@ -415,25 +470,34 @@ Group filtered files by directory/package:
 - Go: Group by package directory
 - Python: Group by module directory
 
-### Step 5: Create Coverage Batches
+### Step 5: Write Coverage Batch Files
 
-Create batches of 3-5 files per directory:
+Create the batches directory and write one JSON file per coverage batch:
 
-**Coverage task schema:**
-```yaml
-task_id: "coverage-{dir_slug}-batch-{n}"
-type: "COVERAGE"
-severity: "NONE"
-status: "ready_to_fix"
-target_coverage: 91
-current_coverage: 67.3
-iteration: 1
-files:
-  - file: "src/main/java/com/example/service/UserService.java"
-    coverage: 45.2
-    uncovered_lines: [42, 43, 58, 59, 60, 78]
-    lines_to_cover: 51
-    test_file: "src/test/java/com/example/service/UserServiceTest.java"
+```bash
+mkdir -p "${OUTPUT_DIR}/batches"
+```
+
+For each batch, write `${OUTPUT_DIR}/batches/{task_id}.json`:
+
+```json
+{
+  "task_id": "coverage-{dir_slug}-batch-{n}",
+  "type": "COVERAGE",
+  "severity": "NONE",
+  "target_coverage": 91,
+  "current_coverage": 67.3,
+  "iteration": 1,
+  "files": [
+    {
+      "file": "src/main/java/com/example/service/UserService.java",
+      "coverage": 45.2,
+      "uncovered_lines": [42, 43, 58, 59, 60, 78],
+      "lines_to_cover": 51,
+      "test_file": "src/test/java/com/example/service/UserServiceTest.java"
+    }
+  ]
+}
 ```
 
 ### Step 6: Write Coverage Section to Combos JSON
@@ -450,8 +514,16 @@ Extend the combos.json with coverage information:
     "target": 91,
     "files_below_target": 42,
     "batches": [
-      { "directory": "src/main/java/com/example/service", "file_count": 4 },
-      { "directory": "src/main/java/com/example/controller", "file_count": 5 }
+      {
+        "directory": "src/main/java/com/example/service",
+        "file_count": 4,
+        "task_ids": ["coverage-service-batch-1"]
+      },
+      {
+        "directory": "src/main/java/com/example/controller",
+        "file_count": 5,
+        "task_ids": ["coverage-controller-batch-1"]
+      }
     ],
     "total_batches": 10
   }
@@ -474,13 +546,13 @@ Batches Created:
   ...
 
 Total: 42 files in 10 batches
-Task list populated and ready for coverage writers.
+Batch files written to: ${OUTPUT_DIR}/batches/
 Combos written to: ${OUTPUT_DIR}/combos.json
 ```
 
 ## Output Format
 
-Report to the coordinator when done:
+Return results when done:
 
 ```
 Fetch Complete:
@@ -508,7 +580,7 @@ SECURITY_HOTSPOT:
   LOW:    8 hotspots  → 1 batch
 
 Total: 181 issues + 25 hotspots in 26 batches across 11 active combinations
-Task list populated and ready for fixers.
+Batch files written to: ${OUTPUT_DIR}/batches/
 Combos written to: ${OUTPUT_DIR}/combos.json
 ```
 
@@ -516,7 +588,7 @@ Combos written to: ${OUTPUT_DIR}/combos.json
 
 **Issues fetch:**
 - If curl fails: Try SonarQube MCP
-- If both fail: Report specific error to coordinator
+- If both fail: Return error result with specific error message
 - If no issues found: Report "No issues found for specified types/severities"
 
 **Hotspot fetch:**
@@ -536,9 +608,8 @@ Combos written to: ${OUTPUT_DIR}/combos.json
 
 ## Communication
 
-- Broadcast progress to all teammates periodically
-- Message coordinator immediately if blocked
-- Do not shut down until all batches are created, tasks are `ready_to_fix`, and combos.json is written
+- Log progress periodically
+- Do not shut down until all batch files are written and combos.json is complete
 
 **Combined mode completion:**
 When MODE is `both`, report completion of both workflows:
@@ -559,6 +630,7 @@ Target: 91%
 Files Below Target: 42
 Total Batches: 10
 
+All batch files written to: ${OUTPUT_DIR}/batches/
 All tasks ready for processing.
 ```
 
@@ -586,5 +658,6 @@ Target: 91%
 Files Below Target: 42
 Total Batches: 10
 
+All batch files written to: ${OUTPUT_DIR}/batches/
 All tasks ready for processing.
 ```

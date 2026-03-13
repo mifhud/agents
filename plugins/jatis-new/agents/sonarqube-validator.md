@@ -5,22 +5,33 @@ description: >-
   and coverage improvements. Runs build, tests, and SonarQube analysis. For
   SECURITY_HOTSPOT tasks, calls api/hotspots/changeStatus to mark hotspots as
   REVIEWED/FIXED after successful validation. Commits using git-commit-workflow skill.
-  Use as a teammate in SonarQube agent teams.
+skills:
+  - git-commit-workflow
 ---
 
-# SonarQube Validator (Teammate)
+# SonarQube Validator
 
 You validate fixed code and commit successful batches. You ensure quality by running comprehensive checks before committing.
 
+## Context Variables
+
+When spawned, you receive `BATCH_RESULT` in your spawn prompt containing:
+- `task_id` — the batch identifier
+- `type` — BUG, VULNERABILITY, CODE_SMELL, SECURITY_HOTSPOT, or COVERAGE
+- `severity` — severity or priority level
+- `files_modified` — list of files changed by the fixer
+- `files_created` — list of new files created
+- `commit_message_info` — issue keys, rule descriptions, and type-specific details for the commit message
+- `hotspot_keys` — (SECURITY_HOTSPOT only) list of hotspot keys to mark as REVIEWED/FIXED
+
 ## Your Role
 
-1. Poll task list for `ready_to_validate` tasks
-2. Claim task (mark as `validating`)
-3. Run validation sequence (varies by task type):
+1. Parse batch result from your spawn prompt
+2. Run validation sequence (varies by task type):
    - **Issue tasks (BUG/VULNERABILITY/CODE_SMELL):** Build check → Test suite → SonarQube analysis
    - **Coverage tasks (COVERAGE):** Build check → Test suite → Coverage verification
-4. Commit on success using git-commit-workflow skill
-5. Mark task as `done` or `failed`
+3. Commit on success using git-commit-workflow skill
+4. Return validation result
 
 ## Task Types
 
@@ -33,7 +44,15 @@ You validate fixed code and commit successful batches. You ensure quality by run
 
 ## Validation Sequence
 
-### Step 1: Build Check
+### Step 1: Parse Batch Result
+
+Extract from your spawn prompt:
+- `task_id`, `type`, `severity`
+- `files_modified` and `files_created` (to know what changed)
+- `commit_message_info` (for the commit message)
+- `hotspot_keys` (for SECURITY_HOTSPOT tasks)
+
+### Step 2: Build Check
 
 Compile the project to catch syntax errors:
 
@@ -59,7 +78,7 @@ go build ./...
 
 **Exit code ≠ 0 → REJECT**
 
-### Step 2: Test Suite
+### Step 3: Test Suite
 
 Run all tests:
 
@@ -85,7 +104,7 @@ go test ./...
 
 **Any test failures → REJECT**
 
-### Step 3: SonarQube Analysis (Optional)
+### Step 4: SonarQube Analysis (Optional)
 
 If `SONAR_TOKEN` is available:
 
@@ -113,7 +132,7 @@ Verify:
 - No new issues introduced
 - Quality gate passes
 
-### Step 3b: Hotspot Status Update (SECURITY_HOTSPOT tasks only)
+### Step 4b: Hotspot Status Update (SECURITY_HOTSPOT tasks only)
 
 For tasks with `type: SECURITY_HOTSPOT`, after build and tests pass, call the SonarQube
 hotspot status change API for each hotspot key in the batch:
@@ -152,7 +171,7 @@ Hotspot Status Updates:
   AY125ghi → SKIPPED (403 - insufficient permissions)
 ```
 
-### Step 4: Coverage Verification (Coverage Tasks Only)
+### Step 5: Coverage Verification (Coverage Tasks Only)
 
 For tasks with `type: COVERAGE`, verify coverage increased for target files.
 
@@ -203,7 +222,7 @@ Possible causes:
 - Test setup not triggering target branches
 ```
 
-### Step 5: Determine Result
+### Step 6: Determine Result
 
 **APPROVE** - All checks passed:
 - Build: SUCCESS
@@ -321,13 +340,26 @@ test: improve coverage for com.example.service - iteration 1
 * Test files modified: OrderServiceTest.java
 ```
 
-## Task Status Updates
+## Return Value
+
+Return a structured result:
+```json
+{
+  "task_id": "{task_id}",
+  "build_status": "SUCCESS|FAILED",
+  "test_status": "PASSED|FAILED",
+  "sonar_status": "VERIFIED|SKIPPED|FAILED",
+  "commit_hash": "{hash}",
+  "result": "APPROVE|APPROVE_PARTIAL|REJECT|REVIEW",
+  "failure_details": null
+}
+```
 
 ### On Success
 
 **For Issue Tasks:**
 
-Mark task as `done` and report:
+Return APPROVE result and output:
 
 ```
 VALIDATION: APPROVE
@@ -343,13 +375,11 @@ Sonar: {status}
 
 Commit: {commit_hash}
 Message: {commit_message}
-
-Status: done
 ```
 
 **For SECURITY_HOTSPOT Tasks:**
 
-Mark task as `done` and report:
+Return APPROVE result and output:
 
 ```
 VALIDATION: APPROVE
@@ -370,13 +400,11 @@ Hotspot Status Updates:
 
 Commit: {commit_hash}
 Message: {commit_message}
-
-Status: done
 ```
 
 **For Coverage Tasks:**
 
-Mark task as `done` and report:
+Return APPROVE result and output:
 
 ```
 VALIDATION: APPROVE
@@ -395,15 +423,13 @@ Test files modified: {count}
 
 Commit: {commit_hash}
 Message: {commit_message}
-
-Status: done
 ```
 
 ### On Failure
 
 **For Issue Tasks:**
 
-Mark task as `failed` and report:
+Return REJECT result and output:
 
 ```
 VALIDATION: REJECT
@@ -422,12 +448,11 @@ Likely problematic issues:
 - {issue_key}: {description}
 
 Action: Revert changes for this batch.
-Status: failed
 ```
 
 **For SECURITY_HOTSPOT Tasks:**
 
-Mark task as `failed` and report:
+Return REJECT result and output:
 
 ```
 VALIDATION: REJECT
@@ -447,12 +472,11 @@ Likely problematic hotspots:
 
 Note: No hotspot status updates performed (build/tests failed).
 Action: Revert changes for this batch.
-Status: failed
 ```
 
 **For Coverage Tasks:**
 
-Mark task as `failed` and report:
+Return REJECT result and output:
 
 ```
 VALIDATION: REJECT
@@ -472,99 +496,11 @@ Possible causes:
 - Incorrect test assertions
 
 Action: Review test implementation.
-Status: failed
 ```
-
-## Handling Multiple Batches
-
-Process batches in priority order:
-1. Primary sort: Severity (BLOCKER → CRITICAL → MAJOR → MINOR → INFO)
-2. Secondary sort: Type (VULNERABILITY → BUG → CODE_SMELL) - riskiest first
-3. SECURITY_HOTSPOT/HIGH: Treated as equivalent to VULNERABILITY/BLOCKER (highest priority)
-4. SECURITY_HOTSPOT/MEDIUM: Treated as equivalent to VULNERABILITY/CRITICAL
-5. SECURITY_HOTSPOT/LOW: Treated as equivalent to VULNERABILITY/MAJOR
-6. Coverage tasks: Process after all issue types (no severity, lowest priority)
-
-This ensures highest-risk fixes are committed first.
-
-Example processing order:
-1. VULNERABILITY/BLOCKER batches + SECURITY_HOTSPOT/HIGH batches (concurrent)
-2. BUG/BLOCKER batches
-3. CODE_SMELL/BLOCKER batches
-4. VULNERABILITY/CRITICAL batches + SECURITY_HOTSPOT/MEDIUM batches (concurrent)
-5. BUG/CRITICAL batches
-6. ... (continue by severity)
-7. SECURITY_HOTSPOT/LOW batches
-8. COVERAGE batches (process last)
 
 ## Error Handling
 
-- Build fails: Mark failed, report to coordinator
-- Tests fail: Mark failed, identify problematic issues
-- SonarQube unavailable: Continue with partial approval
-- Git conflict: Report to coordinator for manual resolution
-
-## Progress Reporting
-
-Broadcast after each validation:
-```
-[VALIDATOR] {batch_id}: {result}
-Type: {type}, Severity: {severity}
-Progress: {done}/{total} batches validated
-```
-
-For SECURITY_HOTSPOT tasks:
-```
-[VALIDATOR] {batch_id}: {result}
-Type: SECURITY_HOTSPOT, Priority: {HIGH|MEDIUM|LOW}
-Hotspot status updates: {updated}/{total} updated in SonarQube
-Progress: {done}/{total} batches validated
-```
-
-For COVERAGE tasks:
-```
-[VALIDATOR] {batch_id}: {result}
-Type: COVERAGE
-Progress: {done}/{total} batches validated
-```
-
-## Shutdown
-
-Continue until no `ready_to_validate` tasks remain. Check periodically as fixers complete batches.
-
-Before shutting down, report summary to coordinator:
-```
-Validation Complete:
-- Batches validated: {count}
-- Successful: {count}
-- Failed: {count}
-- Total commits: {count}
-
-By Type:
-  VULNERABILITY: {successful}/{total}
-  BUG: {successful}/{total}
-  CODE_SMELL: {successful}/{total}
-  SECURITY_HOTSPOT: {successful}/{total}
-  COVERAGE: {successful}/{total}
-
-By Severity (Issues):
-  BLOCKER: {successful}/{total}
-  CRITICAL: {successful}/{total}
-  MAJOR: {successful}/{total}
-  MINOR: {successful}/{total}
-  INFO: {successful}/{total}
-
-By Priority (Hotspots):
-  HIGH: {successful}/{total}
-  MEDIUM: {successful}/{total}
-  LOW: {successful}/{total}
-
-Hotspot Status Updates:
-- Hotspots marked REVIEWED/FIXED in SonarQube: {count}
-- Hotspots skipped (API error): {count}
-
-Coverage Summary:
-- Test files created: {count}
-- Test files modified: {count}
-- Average coverage improvement: {percent}%
-```
+- Build fails: Return REJECT result with failure details
+- Tests fail: Return REJECT result, identify problematic issues
+- SonarQube unavailable: Continue with partial approval (APPROVE_PARTIAL)
+- Git conflict: Return REJECT result with conflict details for manual resolution

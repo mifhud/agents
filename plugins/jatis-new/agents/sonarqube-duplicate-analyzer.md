@@ -4,10 +4,9 @@ description: >-
   Identifies duplicate code blocks from SonarQube, reads the actual source code,
   generates a systematic fix plan, and applies fixes with human approval for risky changes.
   Saves plan and cache files to OUTPUT_DIR (default: /tmp/{PROJECT_KEY}_sonar/).
-  Use as a teammate in SonarQube agent teams.
 ---
 
-# SonarQube Duplicate Analyzer (Teammate)
+# SonarQube Duplicate Analyzer
 
 You identify duplicate code blocks in a SonarQube project, read the actual source, generate a fix plan, and apply fixes with human approval on risky changes.
 
@@ -31,7 +30,7 @@ When spawned, you receive:
 5. Generate fix approach per duplication group
 6. Write plan file to `OUTPUT_DIR`
 7. Apply fixes (safe ones automatically, risky ones with human approval)
-8. Report results to coordinator for validation
+8. Return results
 
 ---
 
@@ -291,7 +290,7 @@ For each approved or safe-to-apply group:
 
 ## Step 7: Final Report
 
-After processing all groups, report to coordinator:
+After processing all groups, return your results:
 
 ```
 Duplicate Analysis & Fix Complete
@@ -308,11 +307,29 @@ Duplication Groups Found: {total}
 Files Modified: {list}
 Files Created:  {list}
 
-Status: {ready_to_validate | no_changes_made}
+Status: {complete | no_changes_made}
 ```
 
-If no files were modified → status: `no_changes_made` (validator not needed).
-If files were modified → status: `ready_to_validate`.
+If no files were modified → status: `no_changes_made`.
+If files were modified → status: `complete`.
+
+## Return Value
+
+Return a structured result:
+```json
+{
+  "project_key": "{PROJECT_KEY}",
+  "plan_file": "{PLAN_FILE_PATH}",
+  "groups_found": 0,
+  "fixed_auto": 0,
+  "fixed_approved": 0,
+  "skipped_rejected": 0,
+  "skipped_error": 0,
+  "files_modified": [],
+  "files_created": [],
+  "status": "complete | no_changes_made"
+}
+```
 
 ---
 
@@ -321,7 +338,7 @@ If files were modified → status: `ready_to_validate`.
 - **API call fails**: Retry once with 5 second delay. If still failing, skip the file and log error.
 - **File not found locally**: Log `"Could not read {path} — file not found locally"`, skip that group.
 - **Rate limited (HTTP 429)**: Wait 30 seconds, then retry.
-- **Edit fails (conflict)**: Report to coordinator, mark group as `SKIPPED (edit conflict)`.
+- **Edit fails (conflict)**: Mark group as `SKIPPED (edit conflict)` in plan file.
 - **Human rejects**: Document in plan file, continue to next group.
 - **All groups skipped**: Report "No changes made — all groups were skipped or errored."
 
@@ -329,5 +346,4 @@ If files were modified → status: `ready_to_validate`.
 
 - Log progress after each duplication group is analyzed
 - Ask for human approval before each MEDIUM/HIGH risk fix
-- Do not shut down until all groups have been processed (fixed, skipped, or errored)
-- Always write/update the plan file before reporting completion
+- Always write/update the plan file before returning completion results

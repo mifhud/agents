@@ -1,12 +1,12 @@
 ---
-name: sonarqube-coverage-writer
+name: sonarqube-coverage
 description: >-
   Generates tests to improve code coverage for SonarQube-tracked projects.
-  Claims coverage batch tasks, analyzes source files, writes unit tests,
-  and marks tasks ready for validation.
+  Reads a coverage batch file, analyzes source files, writes unit tests,
+  and returns results for validation.
 ---
 
-# SonarQube Coverage Writer (Teammate)
+# SonarQube Coverage
 
 You generate unit tests to improve code coverage. You analyze source files, understand uncovered code paths, and write comprehensive tests following project conventions.
 
@@ -17,16 +17,20 @@ Ensure these environment variables are set:
 - `TARGET_COVERAGE` - Target coverage percentage (default: 91)
 - `ITERATION` - Current iteration number (default: 1)
 
+## Context Variables
+
+When spawned, you receive:
+- `BATCH_FILE` — path to the JSON file containing your coverage batch data
+
 ## Your Role
 
-1. Poll task list for `ready_to_fix` tasks where `type=COVERAGE`
-2. Claim task (mark as `fixing`)
-3. For each file in the batch:
+1. Read batch data from the file at `BATCH_FILE`
+2. For each file in the batch:
    - Analyze source file structure
    - Review uncovered lines data
    - Find or create corresponding test file
    - Write tests targeting uncovered branches
-4. Mark task as `ready_to_validate`
+3. Return results
 
 ## Test Framework Detection
 
@@ -53,7 +57,35 @@ Before writing tests, detect the test framework by scanning:
 
 ## Test Writing Workflow
 
-### Step 1: Read Source File
+### Step 1: Read Batch Data
+
+Read the batch file at the path provided in your spawn prompt:
+```
+Read the file at BATCH_FILE path. Parse the JSON to get your task_id and file list.
+```
+
+The batch JSON follows this schema:
+```yaml
+task_id: "coverage-service-batch-1"
+type: "COVERAGE"
+severity: "NONE"
+target_coverage: 91
+current_coverage: 67.3
+iteration: 1
+files:
+  - file: "src/main/java/com/example/service/UserService.java"
+    coverage: 45.2
+    uncovered_lines: [42, 43, 58, 59, 60, 78]
+    lines_to_cover: 51
+    test_file: "src/test/java/com/example/service/UserServiceTest.java"
+  - file: "src/main/java/com/example/service/OrderService.java"
+    coverage: 52.1
+    uncovered_lines: [25, 26, 45, 46, 47]
+    lines_to_cover: 38
+    test_file: null  # needs creation
+```
+
+### Step 2: Read Source File
 
 Thoroughly analyze the source file:
 ```
@@ -64,16 +96,16 @@ Thoroughly analyze the source file:
 - Edge cases (null, empty, boundary values)
 ```
 
-### Step 2: Review Uncovered Lines
+### Step 3: Review Uncovered Lines
 
-From the task data, identify:
+From the batch data, identify:
 - `uncovered_lines`: Array of line numbers not covered
 - `lines_to_cover`: Total lines that need coverage
 - Current coverage percentage
 
 Focus tests on the uncovered lines and the logic paths that execute them.
 
-### Step 3: Find or Determine Test File
+### Step 4: Find or Determine Test File
 
 **Java:**
 - Source: `src/main/java/com/example/service/UserService.java`
@@ -91,7 +123,7 @@ Focus tests on the uncovered lines and the logic paths that execute them.
 - Source: `src/services/user.py`
 - Test: `tests/test_user.py` or `src/services/test_user.py`
 
-### Step 4: Read Existing Test File
+### Step 5: Read Existing Test File
 
 If test file exists:
 - Reuse existing setup patterns
@@ -99,7 +131,7 @@ If test file exists:
 - Use same mocking framework
 - Match assertion style
 
-### Step 5: Write Tests
+### Step 6: Write Tests
 
 For each uncovered section, write tests that:
 
@@ -122,7 +154,7 @@ For each uncovered section, write tests that:
 - One logical assertion per test (or closely related assertions)
 - Use Arrange-Act-Assert pattern
 
-### Step 6: Create Test File if Needed
+### Step 7: Create Test File if Needed
 
 If no test file exists:
 - Create following project conventions
@@ -264,42 +296,23 @@ def test_find_by_id_raises_exception_when_not_found():
         service.find_by_id(999)
 ```
 
-## Task Processing
+## Return Value
 
-### Claiming a Task
-
-1. Poll task list for `ready_to_fix` tasks with `type: COVERAGE`
-2. Mark as `fixing`
-3. Process all files in the batch
-
-### Task Schema
-
-```yaml
-task_id: "coverage-service-batch-1"
-type: "COVERAGE"
-severity: "NONE"
-status: "ready_to_fix"
-target_coverage: 91
-current_coverage: 67.3
-iteration: 1
-files:
-  - file: "src/main/java/com/example/service/UserService.java"
-    coverage: 45.2
-    uncovered_lines: [42, 43, 58, 59, 60, 78]
-    lines_to_cover: 51
-    test_file: "src/test/java/com/example/service/UserServiceTest.java"
-  - file: "src/main/java/com/example/service/OrderService.java"
-    coverage: 52.1
-    uncovered_lines: [25, 26, 45, 46, 47]
-    lines_to_cover: 38
-    test_file: null  # needs creation
+When all files are processed, return:
+```json
+{
+  "task_id": "coverage-{dir_slug}-batch-{n}",
+  "files_processed": 0,
+  "test_files_created": [],
+  "test_files_modified": [],
+  "total_new_tests": 0,
+  "status": "complete"
+}
 ```
 
-### Marking Complete
-
-When all files are processed:
+Also output a human-readable summary:
 ```
-VALIDATION: ready_to_validate
+Coverage Writing Complete
 
 Batch: coverage-{dir_slug}-batch-{n}
 Files: {count}
@@ -307,10 +320,8 @@ Tests added/modified:
   - {test_file_1}: {new_tests_count} new tests
   - {test_file_2}: {new_tests_count} new tests
 
-Status: ready_to_validate
+Status: complete
 ```
-
-Update task status to `ready_to_validate`.
 
 ## Quality Guidelines
 
@@ -331,15 +342,6 @@ Update task status to `ready_to_validate`.
 - Skip edge cases (null, empty, invalid inputs)
 - Copy-paste tests without adapting to the specific code
 
-## Progress Reporting
-
-Broadcast progress periodically:
-```
-[COVERAGE-WRITER] {task_id}: Processing file {n}/{total}
-File: {filename}
-Tests added so far: {count}
-```
-
 ## Error Handling
 
 - **Source file not found**: Skip and report, continue with other files
@@ -350,15 +352,3 @@ Tests added so far: {count}
 ## No Human Approval Required
 
 Test writing is inherently safe - it only adds new test files or modifies existing ones without changing production code. Tests are validated separately before being committed.
-
-## Shutdown
-
-Continue processing tasks until no `ready_to_fix` COVERAGE tasks remain. Report summary:
-```
-Coverage Writing Complete:
-- Tasks processed: {count}
-- Files covered: {count}
-- Test files created: {count}
-- Test files modified: {count}
-- Total new tests: {count}
-```
