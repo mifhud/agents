@@ -1,173 +1,56 @@
 {
     "$schema": "https://opencode.ai/config.json",
-    "provider": {
-        "localopenrouter": {
-            "npm": "@ai-sdk/openai-compatible",
-            "name": "Local OpenRouter",
-            "options": {
-                "baseURL": "http://192.168.100.192:5000/api/v1"
-            },
-            "models": {
-                "z-ai/glm-4.5-air:free": {
-                    "name": "GLM 4.5 Air"
-                },
-                "deepseek/deepseek-chat-v3.1:free": {
-                    "name": "DeepSeek V3.1"
-                },
-                "openai/gpt-oss-120b:free": {
-                    "name": "gpt-oss-120b"
-                },
-                "qwen/qwen3-coder:free": {
-                    "name": "Qwen3 Coder 480B A35B"
-                },
-                "moonshotai/kimi-k2:free": {
-                    "name": "Kimi K2 0711"
-                },
-                "google/gemini-2.0-flash-exp:free": {
-                    "name": "Gemini 2.0 Flash Exp"
-                },
-                "kwaipilot/kat-coder-pro:free": {
-                    "name": "Kwaipilot: KAT-Coder-Pro V1"
-                }
+    "permission": {
+        "edit": "ask",
+        "question": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+        "bash": {
+            "ls": "allow",
+            "pwd": "allow",
+            "git status": "allow",
+            "git diff*": "allow",
+            "git add*": "allow",
+            "git log*": "allow"
+        }
+    },
+    "default_agent": "build",
+    "agent": {
+        "plan": {
+            "mode": "primary",
+            "prompt": "{file:/root/.config/opencode/agents/myplan.txt}",
+            "tools": {
+                "write": false,
+                "edit": false,
+                "bash": true
             }
         },
-        "chatanywhere": {
-            "npm": "@ai-sdk/openai-compatible",
-            "name": "Chat Anywhere",
-            "options": {
-                "baseURL": "https://api.chatanywhere.tech/v1"
+        "build": {
+            "mode": "primary",
+            "tools": {
+                "write": true,
+                "edit": true,
+                "bash": true
             },
-            "models": {
-                "gpt-5": {
-                    "name": "GPT 5"
-                }
-            }
-        },
-        "google": {
-            "models": {
-                "gemini-3-pro-high": {
-                    "name": "Gemini 3 Pro High (Antigravity)",
-                    "limit": {
-                        "context": 1048576,
-                        "output": 65535
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    }
-                },
-                "gemini-3-pro-low": {
-                    "name": "Gemini 3 Pro Low (Antigravity)",
-                    "limit": {
-                        "context": 1048576,
-                        "output": 65535
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    }
-                },
-                "gemini-3-flash": {
-                    "name": "Gemini 3 Flash (Antigravity)",
-                    "limit": {
-                        "context": 1048576,
-                        "output": 65536
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    }
-                },
-                "claude-sonnet-4-5": {
-                    "name": "Claude Sonnet 4.5 (Antigravity)",
-                    "limit": {
-                        "context": 200000,
-                        "output": 64000
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    }
-                },
-                "claude-sonnet-4-5-thinking": {
-                    "name": "Claude Sonnet 4.5 Thinking (Antigravity)",
-                    "limit": {
-                        "context": 200000,
-                        "output": 64000
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    }
-                },
-                "claude-opus-4-5-thinking": {
-                    "name": "Claude Opus 4.5 Thinking (Antigravity)",
-                    "limit": {
-                        "context": 200000,
-                        "output": 64000
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    }
-                },
-                "gpt-oss-120b-medium": {
-                    "name": "GPT-OSS 120B Medium (Antigravity)",
-                    "limit": {
-                        "context": 131072,
-                        "output": 32768
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    }
-                }
+            "permission": {
+                "edit": "allow"
             }
         }
     },
+    "plugin": [
+        "@mohak34/opencode-notifier@latest"
+    ],
     "mcp": {
+        "web-search-chrome": {
+            "type": "local",
+            "command": [
+                "npx",
+                "-y",
+                "chrome-devtools-mcp@latest",
+                "--slim",
+                "--headless"
+            ]
+        },
         "chrome-devtools": {
             "type": "local",
             "command": [
@@ -544,6 +427,98 @@
             "extensions": [
                 ".java"
             ]
+        }
+    },
+    "provider": {
+        "localgithubcopilot": {
+            "npm": "@ai-sdk/openai-compatible",
+            "name": "Local Github Copilot",
+            "options": {
+                "baseURL": "http://172.26.112.1:4141/v1"
+            },
+            "models": {
+                "claude-sonnet-4.6": {
+                    "name": "Claude Sonnet 4.6"
+                }
+            }
+        },
+        "localkilocode": {
+            "npm": "@ai-sdk/openai-compatible",
+            "name": "Local KiloCode",
+            "options": {
+                "baseURL": "http://localhost:5001/api/v1"
+            },
+            "models": {
+                "minimax/minimax-m2.5:free": {
+                    "name": "MiniMax: MiniMax M2.5 (free)"
+                },
+                "z-ai/glm-5:free": {
+                    "name": "Z.ai: GLM 5 (free)"
+                }
+            }
+        },
+        "localopencode": {
+            "npm": "@ai-sdk/openai-compatible",
+            "name": "Local OpenCode",
+            "options": {
+                "baseURL": "http://localhost:5002/api/v1"
+            },
+            "models": {
+                "minimax-m2.5-free": {
+                    "name": "MiniMax: MiniMax M2.5 (free)"
+                },
+                "glm-5-free": {
+                    "name": "Z.ai: GLM 5 (free)"
+                },
+                "kimi-k2.5-free": {
+                    "name": "Kimi: Kimi K2.5 (free)",
+                    "options": {
+                        "thinking": {
+                            "type": "enabled",
+                            "budgetTokens": 16000
+                        },
+                        "interleaved": {
+                            "field": "reasoning_content"
+                        }
+                    }
+                }
+            }
+        },
+        "localopenrouter": {
+            "npm": "@ai-sdk/openai-compatible",
+            "name": "Local OpenRouter",
+            "options": {
+                "baseURL": "http://localhost:5000/api/v1"
+            },
+            "models": {
+                "z-ai/glm-4.5-air:free": {
+                    "name": "GLM 4.5 Air"
+                },
+                "deepseek/deepseek-chat-v3.1:free": {
+                    "name": "DeepSeek V3.1"
+                },
+                "openai/gpt-oss-120b:free": {
+                    "name": "gpt-oss-120b"
+                },
+                "google/gemini-2.0-flash-exp:free": {
+                    "name": "Gemini 2.0 Flash Exp"
+                },
+                "mistralai/devstral-2512:free": {
+                    "name": "Mistral Devstral 25B 12/12"
+                },
+                "nvidia/nemotron-3-nano-30b-a3b:free": {
+                    "name": "NVIDIA: Nemotron 3 Nano 30B A3B"
+                },
+                "qwen/qwen3-vl-235b-a22b-thinking": {
+                    "name": "Qwen: Qwen3 VL 235B A22B Thinking"
+                },
+                "stepfun/step-3.5-flash:free": {
+                    "name": "StepFun: Step 3.5 Flash"
+                },
+                "arcee-ai/trinity-large-preview:free": {
+                    "name": "Arcee AI: Trinity Large Preview"
+                }
+            }
         }
     }
 }
