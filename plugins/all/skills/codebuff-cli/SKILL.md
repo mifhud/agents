@@ -7,6 +7,53 @@ description: "Run Codebuff coding agent interactively via tmux. Use when delegat
 
 Codebuff is an AI coding agent run via terminal TUI. Use tmux for interactive sessions. Must process using tmux and codebuff cli.
 
+## Agent Type
+
+Every Codebuff task must declare an **agent type**. The default is `build`.
+
+| Type    | Default | Description                                                                 |
+|---------|---------|-----------------------------------------------------------------------------|
+| `build` | ✅ Yes  | Execute coding tasks directly — write, edit, and ship code.                |
+| `plan`  | No      | Explore the codebase and design implementation plans only. **No file modifications allowed during research phase.** |
+
+### `build` (default)
+
+When agent type is `build`, proceed normally with the Codebuff workflow below. No additional rules apply beyond the standard skill instructions.
+
+### `plan`
+
+When agent type is `plan`, you **must** follow the `agent/plan.md` rules:
+
+#### PHASE 1 — READ-ONLY EXPLORATION (strictly no file modifications)
+
+- No creating, editing, deleting, moving, or copying files
+- No redirect operators (`>`, `>>`, `|`) or heredocs
+- No state-changing commands
+- Allowed: `ls`, `git status`, `git log`, `git diff`, `find`, `cat`, `head`, `tail`, `grep`, `glob`, `read`
+
+#### PHASE 2 — SAVE PLAN
+
+After research and clarification, write the final plan to `docs/plans/`:
+
+1. **Understand Requirements** — Focus on the requirements provided and apply the assigned perspective throughout design.
+2. **Explore Thoroughly** —
+   - Read any files provided in the initial prompt
+   - Find existing patterns and conventions using: glob, grep, and read
+   - Understand the current architecture
+   - Identify similar features as reference
+   - Trace through relevant code paths
+   - Use bash tool ONLY for read-only operations
+3. **Design Solution** —
+   - Create implementation approach based on the assigned perspective
+   - Consider trade-offs and architectural decisions
+   - Follow existing patterns where appropriate
+4. **Ask Clarifying Questions** — Before writing any files, ask any remaining clarifying questions.
+5. **Save the Plan** —
+   - Create the directory if needed: `mkdir -p docs/plans`
+   - Write the plan as: `docs/plans/<feature-name>.md`
+   - Include: overview, architecture decisions, step-by-step implementation, file changes, dependencies, risks
+   - Confirm to the user where the plan was saved
+
 ## Binary Path
 
 ```bash
@@ -24,7 +71,6 @@ Switch modes anytime mid-session by typing the slash command in the Codebuff inp
 | `/mode:default` | Default | Balanced, general coding tasks  |
 | `/mode:free`    | Free    | Free tier, limited usage        |
 | `/mode:max`     | Max     | Maximum capability              |
-| `/mode:plan`    | Plan    | Planning & architecture tasks   |
 
 ## Check Usage
 
@@ -160,11 +206,6 @@ tmux -S "$SOCKET" send-keys -t "$SESSION":0.0 -l -- '/mode:max'
 sleep 0.2
 tmux -S "$SOCKET" send-keys -t "$SESSION":0.0 Enter
 
-# Switch to PLAN mode
-tmux -S "$SOCKET" send-keys -t "$SESSION":0.0 -l -- '/mode:plan'
-sleep 0.2
-tmux -S "$SOCKET" send-keys -t "$SESSION":0.0 Enter
-
 # Switch to DEFAULT mode
 tmux -S "$SOCKET" send-keys -t "$SESSION":0.0 -l -- '/mode:default'
 sleep 0.2
@@ -205,8 +246,8 @@ for i in {1..20}; do
   echo "⏳ Check $i..."
 done
 
-# 4. MANDATORY: Set mode explicitly (e.g. PLAN for planning)
-tmux -S "$SOCKET" send-keys -t "$SESSION":0.0 -l -- '/mode:plan'
+# 4. MANDATORY: Set mode explicitly
+tmux -S "$SOCKET" send-keys -t "$SESSION":0.0 -l -- '/mode:default'
 sleep 0.2
 tmux -S "$SOCKET" send-keys -t "$SESSION":0.0 Enter
 sleep 2
@@ -237,6 +278,7 @@ tmux -S "$SOCKET" capture-pane -p -J -t "$SESSION":0.0 -S -
 - **Use the `-l` flag** on send-keys for literal strings (prevents tmux from interpreting special characters)
 - **Polling with grep** is more reliable than a fixed `sleep` for waiting until the TUI is ready
 - Modes can be **switched at any time** mid-session without restarting Codebuff
+- **Agent type `plan`** requires strict read-only exploration before saving plans — do NOT use `agent/plan.md` rules for `build` type
 
 ## Cleanup (MANDATORY)
 
