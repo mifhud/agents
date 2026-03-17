@@ -28,11 +28,17 @@ Before first use, establish these variables. Prompt the user for any values not 
 SSH_USER="user"              # Remote username
 SSH_HOST="hostname_or_ip"    # Remote host address
 SSH_PORT="22"                # SSH port (default 22)
-SSH_KEY=""                   # Path to SSH private key (optional, leave empty for password auth)
+SSH_KEY=""                   # Path to SSH private key (optional, see note below)
 
 # Tmux settings
 SESSION="remote-session"     # Tmux session name on the remote host
 ```
+
+### Authentication
+
+> **No password? No problem.** If the user does not provide an SSH password or a specific key path, assume they already have SSH key-based authentication configured (e.g., via `ssh-keygen` and `ssh-copy-id`). In this case, SSH will automatically use the default keys in `~/.ssh/` (such as `id_rsa`, `id_ed25519`, etc.) and no additional credentials are needed. Simply omit the `-i` flag and let SSH handle authentication with the default agent/keychain.
+>
+> Only prompt the user for credentials if the SSH connection actually fails with a "Permission denied" error.
 
 Build the SSH base command once:
 
@@ -40,6 +46,7 @@ Build the SSH base command once:
 if [ -n "$SSH_KEY" ]; then
   SSH_CMD="ssh -o StrictHostKeyChecking=no -p $SSH_PORT -i $SSH_KEY ${SSH_USER}@${SSH_HOST}"
 else
+  # No key path specified — rely on default SSH keys (ssh-keygen / ssh-agent)
   SSH_CMD="ssh -o StrictHostKeyChecking=no -p $SSH_PORT ${SSH_USER}@${SSH_HOST}"
 fi
 ```
@@ -248,7 +255,7 @@ SSH_USER="deploy"
 SSH_HOST="192.168.1.100"
 SSH_PORT="22"
 SSH_KEY="$HOME/.ssh/id_rsa"
-SESSION="remote-session"
+SESSION="remote-session-$(date +%s)"
 SSH_CMD="ssh -o StrictHostKeyChecking=no -p $SSH_PORT -i $SSH_KEY ${SSH_USER}@${SSH_HOST}"
 
 # --- 1. Ensure tmux session exists ---
@@ -324,7 +331,7 @@ $SSH_CMD "tmux list-sessions 2>/dev/null" || echo "No active tmux sessions."
 | Issue | Solution |
 |---|---|
 | SSH connection refused | Verify `SSH_HOST`, `SSH_PORT`, and that sshd is running on the remote |
-| Permission denied | Check `SSH_USER`, `SSH_KEY` permissions (`chmod 600`), or use password auth |
+| Permission denied | Check `SSH_USER`, `SSH_KEY` permissions (`chmod 600`), or use password auth. If no key was provided, ensure default keys exist in `~/.ssh/` and have been copied to the remote host via `ssh-copy-id`. |
 | Tmux not found on remote | Install with `sudo apt install tmux` or equivalent |
 | Garbled output / line wrapping | Increase pane width with `tmux resize-window -t '$SESSION' -x 250` |
 | Command seems stuck | Capture pane to check status; send `C-c` to interrupt if needed |
