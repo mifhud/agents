@@ -1,8 +1,6 @@
 ---
 name: outline-kb
 description: Fetch and search documents from Outline Knowledge Base. Use for retrieving documentation, searching articles, listing collections, or exploring nested document structures from the Outline wiki.
-argument-hint: "[command] [args]"
-allowed-tools: Bash, Read
 ---
 
 # Outline Knowledge Base Fetcher
@@ -67,7 +65,7 @@ Get child documents:
 Run the appropriate command using the bundled script:
 
 ```bash
-bash ${CLAUDE_SKILL_DIR}/scripts/outline-fetch.sh --$0 $ARGUMENTS
+bash scripts/outline-fetch.sh --$0 $ARGUMENTS
 ```
 
 Where `$0` is the subcommand (search, doc, children, collections, collection-docs).

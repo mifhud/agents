@@ -55,7 +55,7 @@ NC='\033[0m'
 outline_api() {
   local endpoint="$1"
   local payload="$2"
-  curl -s -X POST "${OUTLINE_API_URL}/${endpoint}" \
+  curl -s -X POST "${OUTLINE_API_URL}/api/${endpoint}" \
     -H "Authorization: Bearer ${OUTLINE_API_TOKEN}" \
     -H "Content-Type: application/json" \
     -d "${payload}"
