@@ -37,7 +37,11 @@ Test Scenario:
 
 ## Post-Implementation Procedure
 
-Pastikan aplikasi berhasil menggenerate file .pid
+<!-- Binary/JAR: -->
+- Cek PID file: `cat <app-name>.pid` atau `ps aux | grep <app-name>`
+
+<!-- Docker: -->
+- Cek container status: `docker ps | grep <container_name>`
 
 Cek log utama tidak ada log error hingga aplikasi berjalan
 
