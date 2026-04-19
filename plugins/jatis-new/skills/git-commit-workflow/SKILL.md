@@ -19,7 +19,7 @@ Trigger **only when the user explicitly requests** a commit:
 Before committing, check for uncommitted changes in protected paths:
 
 ```bash
-git status --porcelain myspec/archive AGENTS.md CLAUDE.md .utcp_config.json ralphy.sh 2>/dev/null
+git status --porcelain docs myspec/archive AGENTS.md CLAUDE.md .utcp_config.json ralphy.sh .github .opencode .pi 2>/dev/null
 ```
 
 ### If protected files have uncommitted changes
@@ -28,7 +28,7 @@ Do **not** create a commit.
 
 Instead, notify the user with this exact message:
 
-> Skipping git-commit-workflow: Found uncommitted changes in protected files or folders (myspec/archive, AGENTS.md, CLAUDE.md, .utcp_config.json, ralphy.sh). Please handle these manually.
+> Skipping git-commit-workflow: Found uncommitted changes in protected files or folders (docs myspec/archive, AGENTS.md, CLAUDE.md, .utcp_config.json, ralphy.sh .github .opencode .pi). Please handle these manually.
 ## Commit Rules
 
 ### Commit Message Format

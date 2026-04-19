@@ -1,6 +1,6 @@
 ---
 name: submit-crd
-description: Submit a CRD (Change Request Document) to BOFIS by filling out the form at https://bofis.jatismobile.com/crd/create using Chrome DevTools MCP. The user must provide a completed CRD document with all required fields. Requires chrome-devtools MCP server to be configured.
+description: Submit a CRD (Change Request Document) to BOFIS by filling out the form at https://bofis.jatismobile.com/crd/create using Chrome DevTools MCP. The user must provide a completed CRD document with all required fields AND specify the target PB/PMD number. Requires chrome-devtools MCP server to be configured.
 disable-model-invocation: true
 ---
 
@@ -13,6 +13,7 @@ You are automating the submission of a CRD (Change Request Document) on the BOFI
 - Chrome browser must be open and accessible via DevTools protocol
 - The chrome-devtools MCP server must be running
 - Environment variables `BOFIS_USERNAME` and `BOFIS_PASSWORD` must be set
+- **MANDATORY: The user must provide the target PB/PMD number.** If not provided, use question/AskUserQuestion tool to ask the user for the PB/PMD number before proceeding.
 
 ## CRD Input
 
@@ -47,13 +48,31 @@ Use Bash to read them: `echo $BOFIS_USERNAME` and `echo $BOFIS_PASSWORD`
 
 If either is not set, inform the user and stop.
 
-### Step 2: Navigate to the CRD Page
+### Step 2: Navigate to PB/PMD and Start Dev
+
+1. Use `navigate_page` to go to `https://bofis.jatismobile.com/pbpmd`
+2. Wait for the page to load
+3. Take a screenshot to see the current state
+4. If the page shows a login form, handle authentication first (see Step 3)
+5. Take a snapshot (accessibility tree) to find the list/table of PB/PMD entries
+6. Locate the row that matches the user's target PB/PMD number
+7. In that same row, find and click the icon with class `fa-eye` (the view/detail icon)
+8. Wait for the page/modal to load
+9. Take a screenshot to verify the detail view is shown
+10. Find and click the **"Start Dev"** button
+11. Wait for the action to complete
+12. Take a screenshot to confirm "Start Dev" was successful
+13. If "Start Dev" fails or the button is not found, take a screenshot, report the error to the user, and stop
+
+**IMPORTANT: Do NOT proceed to create the CRD until "Start Dev" has been successfully clicked.**
+
+### Step 3: Navigate to the CRD Page
 
 1. Use `navigate_page` to go to `https://bofis.jatismobile.com/crd/create`
 2. Wait for the page to load
 3. Take a screenshot to see the current state
 
-### Step 3: Handle Authentication (if needed)
+### Step 4: Handle Authentication (if needed)
 
 1. Take a snapshot to inspect the page structure
 2. If the page shows a login form (look for username/password fields or login button):
@@ -64,14 +83,14 @@ If either is not set, inform the user and stop.
    - Take a screenshot to verify login was successful
 3. After login, if not already on the CRD create page, navigate to `https://bofis.jatismobile.com/crd/create`
 
-### Step 4: Inspect the CRD Form
+### Step 5: Inspect the CRD Form
 
 1. Take a snapshot (accessibility tree) to identify all form fields, their labels, types, and UIDs
 2. Take a screenshot for visual confirmation
 3. Map each field from the user's CRD document to the corresponding form field on the page
 4. If any required form field cannot be mapped to the CRD document, use question/AskUserQuestion tool to ask the user for the missing values
 
-### Step 5: Fill the Form
+### Step 6: Fill the Form
 
 1. For each field in the CRD document, use the appropriate tool:
    - For text inputs and textareas: use `fill` with the field's UID and value
@@ -91,7 +110,7 @@ If either is not set, inform the user and stop.
    - Use `click` to focus the field first, then `type_text`
    - Use `evaluate_script` to set the value programmatically
 
-### Step 6: Review and Confirm
+### Step 7: Review and Confirm
 
 1. Take a final screenshot of the completed form
 2. Take a snapshot to capture all filled values
@@ -101,7 +120,7 @@ If either is not set, inform the user and stop.
    - Options: "Yes, Save" / "No, Cancel" / "Let me review changes"
 4. **CRITICAL: Do NOT click Save without explicit user confirmation**
 
-### Step 7: Submit or Cancel
+### Step 8: Submit or Cancel
 
 - If the user confirms "Yes, Save":
   1. Find and click the Save button
@@ -114,7 +133,7 @@ If either is not set, inform the user and stop.
 - If the user says "Let me review changes":
   1. Use question/AskUserQuestion tool to ask which fields need to be modified
   2. Update the specified fields
-  3. Go back to Step 6
+  3. Go back to Step 7
 
 ## Error Handling
 
