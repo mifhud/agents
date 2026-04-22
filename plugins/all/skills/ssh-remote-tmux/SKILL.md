@@ -1,21 +1,24 @@
 ---
 name: ssh-remote-tmux
-description: "Run commands on a remote server via SSH inside a persistent tmux session. Use when the user wants to execute shell commands, manage services, inspect logs, edit files, or perform any interactive task on a remote machine. The user's natural-language prompt is translated into shell commands, then confirmed with the user via question before execution. Commands are executed inside a tmux pane over SSH. The tmux session persists between interactions and is only destroyed when the user explicitly asks. Output: captured tmux pane content showing full command output."
+description: "Run commands on a remote server via SSH inside a persistent tmux session. Use when the user wants to execute shell commands, manage services, inspect logs, edit files, or perform any interactive task on a remote machine. The user's natural-language prompt is translated into shell commands, then confirmed with the user via question before execution. A local tmux session is created first, then SSH connects into it — commands are sent via the local tmux pane. The tmux session persists between interactions and is only destroyed when the user explicitly asks. Output: captured tmux pane content showing full command output."
 ---
 
 # SSH Remote Tmux Skill
 
-Execute commands on a remote server by translating the user's request into shell commands, running them inside a persistent tmux session over SSH, and returning the full terminal output.
+Execute commands on a remote server by translating the user's request into shell commands, running them inside a persistent **local** tmux session that is connected to the remote via SSH, and returning the full terminal output.
+
+# Important
+**Must confirm all commands with the user before execution.**
 
 ## Core Workflow
 
 1. **Parse** the user's natural-language request and determine the shell command(s) needed.
 2. **ASK the user for confirmation** using the `question` tool — present the exact command(s) and let the user approve, edit, or cancel. **NEVER execute any command on the remote server without explicit user approval.**
-3. **Send** only the approved command(s) into the remote tmux session via SSH.
+3. **Send** only the approved command(s) into the local tmux session (which is connected to the remote via SSH).
 4. **Capture** the full terminal output and present it to the user.
 5. **Keep** the tmux session alive — only destroy it when the user explicitly requests cleanup.
 
-> **MANDATORY CONFIRMATION RULE:** Before every command execution, you MUST use the `question` tool to present the command and ask the user to confirm. Do NOT use bash to run the SSH command until the user has approved. This applies to every single command — no exceptions.
+> **MANDATORY CONFIRMATION RULE:** Before every command execution, you MUST use the `question` tool to present the command and ask the user to confirm. Do NOT run anything until the user has approved. This applies to every single command — no exceptions.
 
 ---
 
@@ -28,17 +31,11 @@ Before first use, establish these variables. Prompt the user for any values not 
 SSH_USER="user"              # Remote username
 SSH_HOST="hostname_or_ip"    # Remote host address
 SSH_PORT="22"                # SSH port (default 22)
-SSH_KEY=""                   # Path to SSH private key (optional, see note below)
+SSH_KEY=""                   # Path to SSH private key (optional, leave empty for password auth)
 
-# Tmux settings
-SESSION="remote-session"     # Tmux session name on the remote host
+# Local tmux settings
+SESSION="remote-session"     # Local tmux session name
 ```
-
-### Authentication
-
-> **No password? No problem.** If the user does not provide an SSH password or a specific key path, assume they already have SSH key-based authentication configured (e.g., via `ssh-keygen` and `ssh-copy-id`). In this case, SSH will automatically use the default keys in `~/.ssh/` (such as `id_rsa`, `id_ed25519`, etc.) and no additional credentials are needed. Simply omit the `-i` flag and let SSH handle authentication with the default agent/keychain.
->
-> Only prompt the user for credentials if the SSH connection actually fails with a "Permission denied" error.
 
 Build the SSH base command once:
 
@@ -46,7 +43,6 @@ Build the SSH base command once:
 if [ -n "$SSH_KEY" ]; then
   SSH_CMD="ssh -o StrictHostKeyChecking=no -p $SSH_PORT -i $SSH_KEY ${SSH_USER}@${SSH_HOST}"
 else
-  # No key path specified — rely on default SSH keys (ssh-keygen / ssh-agent)
   SSH_CMD="ssh -o StrictHostKeyChecking=no -p $SSH_PORT ${SSH_USER}@${SSH_HOST}"
 fi
 ```
@@ -55,16 +51,33 @@ fi
 
 ## Session Management
 
-### 1. Create a Persistent Tmux Session on the Remote Host
+### 1. Create a Local Tmux Session
 
-Only create if one doesn't already exist:
+Create the tmux session **locally** first. If it already exists, reuse it.
 
 ```bash
-# Check if session exists
-$SSH_CMD "tmux has-session -t '$SESSION' 2>/dev/null" && echo "Session '$SESSION' already exists." || {
-  $SSH_CMD "tmux new-session -d -s '$SESSION' -x 220 -y 50"
-  echo "✅ Created remote tmux session: $SESSION"
-}
+# Check if local session exists
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+  echo "Session '$SESSION' already exists locally."
+else
+  tmux new-session -d -s "$SESSION" -x 220 -y 50
+  echo "✅ Created local tmux session: $SESSION"
+
+  # Connect to remote via SSH inside the local session
+  tmux send-keys -t "$SESSION" "$SSH_CMD" Enter
+
+  # Wait for SSH to connect (poll until remote shell prompt appears)
+  echo "⏳ Waiting for SSH connection..."
+  for i in {1..15}; do
+    sleep 2
+    OUTPUT=$(tmux capture-pane -t "$SESSION" -p -J -S -100)
+    if echo "$OUTPUT" | tail -3 | grep -qE '[\$#] *$'; then
+      echo "✅ SSH connected to ${SSH_USER}@${SSH_HOST}."
+      break
+    fi
+    echo "⏳ Waiting for SSH connection... (attempt $i)"
+  done
+fi
 ```
 
 > **Note:** The `-x 220 -y 50` sets a wide, tall pane so captured output includes long lines and large outputs without wrapping or truncation.
@@ -72,7 +85,7 @@ $SSH_CMD "tmux has-session -t '$SESSION' 2>/dev/null" && echo "Session '$SESSION
 ### 2. Verify the Session
 
 ```bash
-$SSH_CMD "tmux list-sessions"
+tmux list-sessions
 ```
 
 ---
@@ -95,53 +108,41 @@ Convert the user's natural-language prompt into concrete shell commands. Example
 **Always confirm with the user using the `question` tool before sending.** Example:
 
 ```
-question({
-  questions: [{
-    question: "I'll run this command on the remote server:\n\n`df -h`\n\nProceed?",
-    options: ["Yes, execute", "Edit command", "Cancel"],
-    type: "single_select"
-  }]
-})
+question: "I'll run this command on the remote server:\n\n`df -h`\n\nProceed?",
+options: ["Yes, execute", "Edit command", "Cancel"],
+type: "single_select"
 ```
 
-- If the user selects **"Yes, execute"** → proceed to send the command via SSH.
+- If the user selects **"Yes, execute"** → proceed to send the command via local tmux.
 - If the user selects **"Edit command"** → ask the user to provide the corrected command (in prose), then confirm again with `question`.
 - If the user selects **"Cancel"** → do not execute anything.
 
 For **multiple commands**, list all of them in the question so the user can review the full sequence:
 
 ```
-question({
-  questions: [{
-    question: "I'll run these commands in sequence on the remote server:\n\n1. `cd /var/log`\n2. `ls -lah`\n3. `tail -50 syslog`\n\nProceed?",
-    options: ["Yes, execute all", "Edit commands", "Cancel"],
-    type: "single_select"
-  }]
-})
+question: "I'll run these commands in sequence on the remote server:\n\n1. `cd /var/log`\n2. `ls -lah`\n3. `tail -50 syslog`\n\nProceed?",
+options: ["Yes, execute all", "Edit commands", "Cancel"],
+type: "single_select"
 ```
 
 For **dangerous or destructive commands** (rm, reboot, drop, kill, systemctl stop, etc.), add an extra warning:
 
 ```
-question({
-  questions: [{
-    question: "⚠️ This is a destructive command:\n\n`rm -rf /tmp/old-builds/`\n\nThis will permanently delete files. Are you sure?",
-    options: ["Yes, I understand the risk", "Edit command", "Cancel"],
-    type: "single_select"
-  }]
-})
+question: "⚠️ This is a destructive command:\n\n`rm -rf /tmp/old-builds/`\n\nThis will permanently delete files. Are you sure?",
+options: ["Yes, I understand the risk", "Edit command", "Cancel"],
+type: "single_select"
 ```
 
 ### Sending a Command
 
-Always send the command text and the Enter key as **two separate calls** with a short delay:
+Always send the command text and the Enter key as **two separate calls** with a short delay. Commands are sent to the **local** tmux session (which is already connected to the remote via SSH):
 
 ```bash
 COMMAND='the confirmed command here'
 
-$SSH_CMD "tmux send-keys -t '$SESSION' -l -- $(printf '%q' "$COMMAND")"
+tmux send-keys -t "$SESSION" -l -- "$COMMAND"
 sleep 0.3
-$SSH_CMD "tmux send-keys -t '$SESSION' Enter"
+tmux send-keys -t "$SESSION" Enter
 ```
 
 ### Sending Multiple Sequential Commands
@@ -156,9 +157,9 @@ COMMANDS=(
 )
 
 for CMD in "${COMMANDS[@]}"; do
-  $SSH_CMD "tmux send-keys -t '$SESSION' -l -- $(printf '%q' "$CMD")"
+  tmux send-keys -t "$SESSION" -l -- "$CMD"
   sleep 0.3
-  $SSH_CMD "tmux send-keys -t '$SESSION' Enter"
+  tmux send-keys -t "$SESSION" Enter
   sleep 2  # Wait for command to finish; increase for slower commands
 done
 ```
@@ -172,7 +173,7 @@ done
 Capture the entire scrollback buffer for maximum visibility. Use a large `-S` value to get as much history as possible:
 
 ```bash
-$SSH_CMD "tmux capture-pane -t '$SESSION' -p -J -S -10000"
+tmux capture-pane -t "$SESSION" -p -J -S -10000
 ```
 
 | Flag | Purpose |
@@ -187,14 +188,14 @@ For commands that produce output over time, poll until the shell prompt reappear
 
 ```bash
 # Send the command
-$SSH_CMD "tmux send-keys -t '$SESSION' -l -- 'df -h'"
+tmux send-keys -t "$SESSION" -l -- 'df -h'
 sleep 0.3
-$SSH_CMD "tmux send-keys -t '$SESSION' Enter"
+tmux send-keys -t "$SESSION" Enter
 
 # Poll for completion (look for the shell prompt, e.g. $ or #)
 for i in {1..30}; do
   sleep 2
-  OUTPUT=$($SSH_CMD "tmux capture-pane -t '$SESSION' -p -J -S -10000")
+  OUTPUT=$(tmux capture-pane -t "$SESSION" -p -J -S -10000)
 
   # Check if the prompt has returned (adjust pattern to match the remote shell)
   if echo "$OUTPUT" | tail -3 | grep -qE '[\$#] *$'; then
@@ -212,7 +213,7 @@ done
 If you need just the last N lines (e.g., to avoid noise from earlier commands):
 
 ```bash
-$SSH_CMD "tmux capture-pane -t '$SESSION' -p -J -S -200"
+tmux capture-pane -t "$SESSION" -p -J -S -200
 ```
 
 ---
@@ -224,25 +225,25 @@ For commands that produce continuous output (e.g., `top`, `tail -f`, `htop`):
 ### Start the interactive command
 
 ```bash
-$SSH_CMD "tmux send-keys -t '$SESSION' -l -- 'tail -f /var/log/syslog'"
+tmux send-keys -t "$SESSION" -l -- 'tail -f /var/log/syslog'
 sleep 0.3
-$SSH_CMD "tmux send-keys -t '$SESSION' Enter"
+tmux send-keys -t "$SESSION" Enter
 ```
 
 ### Capture a snapshot of the live output
 
 ```bash
 sleep 5
-$SSH_CMD "tmux capture-pane -t '$SESSION' -p -J -S -500"
+tmux capture-pane -t "$SESSION" -p -J -S -500
 ```
 
 ### Stop the interactive command
 
 ```bash
 # Send Ctrl-C to interrupt
-$SSH_CMD "tmux send-keys -t '$SESSION' C-c"
+tmux send-keys -t "$SESSION" C-c
 sleep 1
-$SSH_CMD "tmux capture-pane -t '$SESSION' -p -J -S -200"
+tmux capture-pane -t "$SESSION" -p -J -S -200
 ```
 
 ---
@@ -255,12 +256,27 @@ SSH_USER="deploy"
 SSH_HOST="192.168.1.100"
 SSH_PORT="22"
 SSH_KEY="$HOME/.ssh/id_rsa"
-SESSION="remote-session-$(date +%s)"
+SESSION="remote-session"
 SSH_CMD="ssh -o StrictHostKeyChecking=no -p $SSH_PORT -i $SSH_KEY ${SSH_USER}@${SSH_HOST}"
 
-# --- 1. Ensure tmux session exists ---
-$SSH_CMD "tmux has-session -t '$SESSION' 2>/dev/null" || \
-  $SSH_CMD "tmux new-session -d -s '$SESSION' -x 220 -y 50"
+# --- 1. Create local tmux session and connect to remote via SSH ---
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+  echo "Reusing existing local session: $SESSION"
+else
+  tmux new-session -d -s "$SESSION" -x 220 -y 50
+  tmux send-keys -t "$SESSION" "$SSH_CMD" Enter
+
+  # Wait for SSH connection (poll for remote shell prompt)
+  for i in {1..15}; do
+    sleep 2
+    OUTPUT=$(tmux capture-pane -t "$SESSION" -p -J -S -100)
+    if echo "$OUTPUT" | tail -3 | grep -qE '[\$#] *$'; then
+      echo "✅ SSH connected."
+      break
+    fi
+    echo "⏳ Waiting for SSH connection... ($i)"
+  done
+fi
 
 # --- 2. Determine the command from user's request ---
 COMMAND="docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
@@ -271,17 +287,15 @@ COMMAND="docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
 #   options: ["Yes, execute", "Edit command", "Cancel"]
 # STOP HERE — do NOT proceed to step 4 until user selects "Yes, execute"
 
-# --- 4. ONLY after user approval, send the command ---
-COMMAND="docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
-
-$SSH_CMD "tmux send-keys -t '$SESSION' -l -- $(printf '%q' "$COMMAND")"
+# --- 4. ONLY after user approval, send the command via local tmux ---
+tmux send-keys -t "$SESSION" -l -- "$COMMAND"
 sleep 0.3
-$SSH_CMD "tmux send-keys -t '$SESSION' Enter"
+tmux send-keys -t "$SESSION" Enter
 
-# --- 3. Wait and capture full output ---
+# --- 5. Wait and capture full output ---
 for i in {1..20}; do
   sleep 2
-  OUTPUT=$($SSH_CMD "tmux capture-pane -t '$SESSION' -p -J -S -10000")
+  OUTPUT=$(tmux capture-pane -t "$SESSION" -p -J -S -10000)
   if echo "$OUTPUT" | tail -3 | grep -qE '[\$#] *$'; then
     echo "$OUTPUT"
     break
@@ -299,15 +313,15 @@ done
 When the user requests cleanup:
 
 ```bash
-$SSH_CMD "tmux kill-session -t '$SESSION' 2>/dev/null" && \
-  echo "✅ Remote tmux session '$SESSION' destroyed." || \
+tmux kill-session -t "$SESSION" 2>/dev/null && \
+  echo "✅ Local tmux session '$SESSION' destroyed." || \
   echo "ℹ️  No session named '$SESSION' found."
 ```
 
-To list active sessions (useful before cleanup):
+To list active local sessions (useful before cleanup):
 
 ```bash
-$SSH_CMD "tmux list-sessions 2>/dev/null" || echo "No active tmux sessions."
+tmux list-sessions 2>/dev/null || echo "No active tmux sessions."
 ```
 
 ---
@@ -315,13 +329,14 @@ $SSH_CMD "tmux list-sessions 2>/dev/null" || echo "No active tmux sessions."
 ## Important Tips
 
 - **Always confirm commands with the user using `question`** before executing. Present the exact command(s) as options and wait for the user to select "Yes, execute". Never skip this step.
+- **Local tmux session** is created first, then SSH connects into it — all subsequent `tmux` commands (send-keys, capture-pane, kill-session) run **locally**, not over SSH.
+- **Reuse existing sessions** — if the local session already exists and SSH is still connected, skip the SSH connect step entirely.
 - **Never combine** command text and Enter in a single `send-keys` call — always separate them with a short sleep.
 - **Use `-l` flag** on `send-keys` for literal strings to prevent tmux from interpreting special characters.
-- **Use `printf '%q'`** to safely quote commands passed through SSH to avoid shell expansion issues.
 - **Use `-S -10000`** (or higher) for `capture-pane` to get the full scrollback buffer so long file contents and outputs are fully visible.
 - **Set wide pane dimensions** (`-x 220 -y 50`) when creating sessions to avoid line wrapping in captured output.
 - **Poll for prompt return** rather than using fixed sleeps — this handles both fast and slow commands gracefully.
-- **Persistent sessions** survive disconnects. If SSH drops, simply reconnect and the tmux session with all its history is still available.
+- **Persistent sessions** survive disconnects. If SSH drops inside the pane, simply reconnect by sending the SSH command again into the same local session.
 - **Never destroy the session automatically.** Only clean up on explicit user request.
 
 ---
@@ -331,10 +346,11 @@ $SSH_CMD "tmux list-sessions 2>/dev/null" || echo "No active tmux sessions."
 | Issue | Solution |
 |---|---|
 | SSH connection refused | Verify `SSH_HOST`, `SSH_PORT`, and that sshd is running on the remote |
-| Permission denied | Check `SSH_USER`, `SSH_KEY` permissions (`chmod 600`), or use password auth. If no key was provided, ensure default keys exist in `~/.ssh/` and have been copied to the remote host via `ssh-copy-id`. |
-| Tmux not found on remote | Install with `sudo apt install tmux` or equivalent |
-| Garbled output / line wrapping | Increase pane width with `tmux resize-window -t '$SESSION' -x 250` |
+| Permission denied | Check `SSH_USER`, `SSH_KEY` permissions (`chmod 600`), or use password auth |
+| SSH prompt not appearing | Increase the wait loop iterations or check network connectivity |
+| Tmux not found locally | Install with `sudo apt install tmux` or equivalent |
+| Garbled output / line wrapping | Increase pane width: `tmux resize-window -t "$SESSION" -x 250` |
 | Command seems stuck | Capture pane to check status; send `C-c` to interrupt if needed |
-| Session disappeared | Remote was rebooted — recreate the session |
+| SSH dropped inside session | Resend `$SSH_CMD` into the same local session to reconnect |
 
 $ARGUMENTS
