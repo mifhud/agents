@@ -19,16 +19,20 @@ Trigger **only when the user explicitly requests** a commit:
 Before committing, check for uncommitted changes in protected paths:
 
 ```bash
-git status --porcelain docs myspec/archive AGENTS.md CLAUDE.md .utcp_config.json ralphy.sh .github .opencode .pi 2>/dev/null
+git status --porcelain docs myspec AGENTS.md CLAUDE.md .utcp_config.json ralphy.sh .github .opencode .pi opencode.json agent-config 2>/dev/null
 ```
 
 ### If protected files have uncommitted changes
 
-Do **not** create a commit.
+Do **not** stage or include those protected files in the commit.
 
-Instead, notify the user with this exact message:
+Instead, **continue the commit** with the remaining non-protected changes, and notify the user with a warning:
 
-> Skipping git-commit-workflow: Found uncommitted changes in protected files or folders (docs myspec/archive, AGENTS.md, CLAUDE.md, .utcp_config.json, ralphy.sh .github .opencode .pi). Please handle these manually.
+> ⚠️ Skipping protected files from this commit: `<list of affected protected paths>`. Please handle these manually.
+
+If **all** changed files are protected (nothing left to commit), then skip the commit entirely and notify:
+
+> Skipping git-commit-workflow: All changed files are in protected paths (docs myspec AGENTS.md CLAUDE.md .utcp_config.json, ralphy.sh .github .opencode .pi opencode.json agent-config). Please handle these manually.
 ## Commit Rules
 
 ### Commit Message Format
@@ -88,7 +92,8 @@ refactor: extract database logic into `DbPool`
 
 1. Wait for explicit user request to commit
 2. Run protected-path checks
-3. If checks fail → skip commit and notify the user
-4. Stage relevant files (`git add <files>`)
-5. Create the commit using Conventional Commits
-6. Confirm the commit was created successfully
+3. If protected files have changes → exclude them from staging, warn the user which files were skipped
+4. If no non-protected changes remain → skip commit entirely and notify the user
+5. Stage only non-protected relevant files (`git add <files>`)
+6. Create the commit using Conventional Commits
+7. Confirm the commit was created successfully
